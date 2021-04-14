@@ -2,15 +2,18 @@
 #define SMASH_COMMAND_H_
 
 #include <vector>
+#include <string>
 
 #define COMMAND_ARGS_MAX_LENGTH (200)
 #define COMMAND_MAX_ARGS (20)
 
+
+
 class Command {
 // TODO: Add your data members
-/* store the command to execute and pid of process */
+/* store the command to execute and pid of the process */
  private:
-  const char *cmd_line;
+  std:: string cmd_line;
   int pid;
  public:
   Command(const char* cmd_line);
