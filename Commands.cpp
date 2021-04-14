@@ -131,5 +131,5 @@ void SmallShell::executeCommand(const char *cmd_line) {
 ChangaPromptDisplayCommand::ChangaPromptDisplayCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {}
 
 void ChangaPromptDisplayCommand::execute() {
-    if(num_)
+    if(this->args_count >= 2)
 };
