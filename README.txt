@@ -5,7 +5,7 @@ The given skeleton includes the following files:
 - Makefile: builds and tests using a basic test your smash. You can use "make zip" to prepare a zip file for submission; this is recommended, which makes sure you follow our submission's structure. 
 - test_input1.txt / test_expected_output1.txt: basic test files that being used by the given Makefile to run a basic test on your smash implementation. 
 
-Our solution and the skeleton code as well use a few known design patterns for making the code modular and readable. We use mainly two design pattersn: Singleton and Factory Method. There are many resources on the internet explaining about these design patters; they are, sometimes, known as the GoF (Gan of Four) design patters. We recommend you do a quick review of these two design patters for a better understanding of the skeleton.
+Our solution and the skeleton code as well use a few known design patterns for making the code modular and readable. We use mainly two design pattern: Singleton and Factory Method. There are many resources on the internet explaining about these design patters; they are, sometimes, known as the GoF (Gan of Four) design patters. We recommend you do a quick review of these two design patters for a better understanding of the skeleton.
 
 How to start:
 First, you have to understand the skeleton design.

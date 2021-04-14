@@ -8,6 +8,10 @@
 
 class Command {
 // TODO: Add your data members
+/* store the command to execute and pid of process */
+ private:
+  const char *cmd_line;
+  int pid;
  public:
   Command(const char* cmd_line);
   virtual ~Command();
@@ -77,7 +81,21 @@ class QuitCommand : public BuiltInCommand {
   void execute() override;
 };
 
+/*  Built-in commands implementation  */
 
+/*
+ * chprompt command - change prompt name
+ * it's a built in command => inherits from BuiltInCommand class
+ * */
+
+class ChangaPromptDisplayCommand : public BuiltInCommand{
+public:
+    ChangaPromptDisplayCommand(const char *cmd_line);
+
+    virtual ~ChangaPromptDisplayCommand();
+
+    void execute() override;
+};
 
 
 class JobsList {

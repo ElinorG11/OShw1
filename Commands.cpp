@@ -116,3 +116,12 @@ void SmallShell::executeCommand(const char *cmd_line) {
   // cmd->execute();
   // Please note that you must fork smash process for some commands (e.g., external commands....)
 }
+
+/* Implementation of added built-in commands */
+
+/* ChPrompt command implementation */
+ChangaPromptDisplayCommand::ChangaPromptDisplayCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {}
+
+void ChangaPromptDisplayCommand::execute() {
+
+};
