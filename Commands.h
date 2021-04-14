@@ -7,6 +7,7 @@
 #define COMMAND_ARGS_MAX_LENGTH (200)
 #define COMMAND_MAX_ARGS (20)
 
+#define MAX_COMMAND_LENGTH (128)
 
 
 class Command {
@@ -14,7 +15,11 @@ class Command {
 /* store the command to execute and pid of the process */
  private:
   std::string cmd_line;
-  int args_count;
+
+protected:
+  int args_count;       // holds number of arguments received
+  char **args_val;      // parsed command-line. each cell hold another argument of the command
+  std::string exec_cmd; // string holds the command to execute
 
  public:
   Command(const char* cmd_line);
@@ -23,6 +28,8 @@ class Command {
   //virtual void prepare();
   //virtual void cleanup();
   // TODO: Add your extra methods if needed
+
+
 };
 
 class BuiltInCommand : public Command {
