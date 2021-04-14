@@ -77,7 +77,13 @@ void _removeBackgroundSign(char* cmd_line) {
 
 // TODO: Add your implementation for classes in Commands.h
 
-Command::Command(const char *cmd_line) {}
+Command::Command(const char *cmd_line) : args_val(new char *[MAX_COMMAND_LENGTH]) {
+    this->args_count = _parseCommandLine(cmd_line, this->args_val);
+    if(this->args_count >= 1){
+        this->exec_cmd = this->args_val[0];
+    }
+    // TODO: what should we do if we get a blank line?
+}
 
 SmallShell::SmallShell() : pid(getpid()){
 // TODO: add your implementation
