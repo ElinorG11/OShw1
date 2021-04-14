@@ -77,7 +77,7 @@ void _removeBackgroundSign(char* cmd_line) {
 
 // TODO: Add your implementation for classes in Commands.h 
 
-SmallShell::SmallShell() {
+SmallShell::SmallShell() : pid(getpid()){
 // TODO: add your implementation
 }
 
