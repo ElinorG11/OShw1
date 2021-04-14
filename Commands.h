@@ -13,7 +13,9 @@ class Command {
 // TODO: Add your data members
 /* store the command to execute and pid of the process */
  private:
-  std:: string cmd_line;
+  std::string cmd_line;
+  int args_count;
+
  public:
   Command(const char* cmd_line);
   virtual ~Command();
@@ -180,6 +182,14 @@ class SmallShell {
   ~SmallShell();
   void executeCommand(const char* cmd_line);
   // TODO: add extra methods as needed
+
+  std::string getPrompt(){
+      return this->prompt;
+  }
+
+  void setPrompt(const std::string &updated_prompt){
+      this->prompt = updated_prompt;
+  }
 };
 
 #endif //SMASH_COMMAND_H_

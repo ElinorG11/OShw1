@@ -75,7 +75,9 @@ void _removeBackgroundSign(char* cmd_line) {
   cmd_line[str.find_last_not_of(WHITESPACE, idx) + 1] = 0;
 }
 
-// TODO: Add your implementation for classes in Commands.h 
+// TODO: Add your implementation for classes in Commands.h
+
+Command::Command(const char *cmd_line) {}
 
 SmallShell::SmallShell() : pid(getpid()){
 // TODO: add your implementation
@@ -123,5 +125,5 @@ void SmallShell::executeCommand(const char *cmd_line) {
 ChangaPromptDisplayCommand::ChangaPromptDisplayCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {}
 
 void ChangaPromptDisplayCommand::execute() {
-
+    if(num_)
 };
