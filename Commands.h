@@ -102,6 +102,14 @@ public:
 };
 
 
+class ShowProcessIdCommand : public BuiltInCommand{
+public:
+    ShowPidCommand(const char *cmd_line);
+    virtual ~ShowProcessIdCommand();
+    void execute() override;
+};
+
+
 class JobsList {
  public:
   class JobEntry {

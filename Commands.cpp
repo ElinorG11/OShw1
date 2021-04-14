@@ -127,3 +127,12 @@ ChangaPromptDisplayCommand::ChangaPromptDisplayCommand(const char *cmd_line) : B
 void ChangaPromptDisplayCommand::execute() {
     if(num_)
 };
+
+/**
+ * ShowPid command implementation
+ */
+ShowProcessIdCommand::ShowProcessIdCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {}
+void ShowProcessIdCommand::execute() {
+    getpid()
+
+}
