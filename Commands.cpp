@@ -85,9 +85,9 @@ Command::Command(const char *cmd_line) : args_val(new char *[MAX_COMMAND_LENGTH]
     // TODO: what should we do if we get a blank line?
 }
 
-SmallShell::SmallShell() : pid(getpid()){
+//SmallShell::SmallShell() : smash_pid(getpid()){
 // TODO: add your implementation
-}
+//}
 
 SmallShell::~SmallShell() {
 // TODO: add your implementation
@@ -131,5 +131,7 @@ void SmallShell::executeCommand(const char *cmd_line) {
 ChangaPromptDisplayCommand::ChangaPromptDisplayCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {}
 
 void ChangaPromptDisplayCommand::execute() {
-    if(this->args_count >= 2)
+    if(this->args_count >= 2){
+
+    }
 };
