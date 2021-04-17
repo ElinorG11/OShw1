@@ -75,19 +75,11 @@ void _removeBackgroundSign(char* cmd_line) {
   cmd_line[str.find_last_not_of(WHITESPACE, idx) + 1] = 0;
 }
 
-// TODO: Add your implementation for classes in Commands.h
+// TODO: Add your implementation for classes in Commands.h 
 
-Command::Command(const char *cmd_line) : args_val(new char *[MAX_COMMAND_LENGTH]) {
-    this->args_count = _parseCommandLine(cmd_line, this->args_val);
-    if(this->args_count >= 1){
-        this->exec_cmd = this->args_val[0];
-    }
-    // TODO: what should we do if we get a blank line?
-}
-
-//SmallShell::SmallShell() : smash_pid(getpid()){
+SmallShell::SmallShell() {
 // TODO: add your implementation
-//}
+}
 
 SmallShell::~SmallShell() {
 // TODO: add your implementation
@@ -124,14 +116,3 @@ void SmallShell::executeCommand(const char *cmd_line) {
   // cmd->execute();
   // Please note that you must fork smash process for some commands (e.g., external commands....)
 }
-
-/* Implementation of added built-in commands */
-
-/* ChPrompt command implementation */
-ChangaPromptDisplayCommand::ChangaPromptDisplayCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {}
-
-void ChangaPromptDisplayCommand::execute() {
-    if(this->args_count >= 2){
-
-    }
-};

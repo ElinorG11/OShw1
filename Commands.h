@@ -2,27 +2,12 @@
 #define SMASH_COMMAND_H_
 
 #include <vector>
-#include <string>
-#include <ostream>
-#include <time.h>
 
 #define COMMAND_ARGS_MAX_LENGTH (200)
 #define COMMAND_MAX_ARGS (20)
 
-#define MAX_COMMAND_LENGTH (128)
-
-
 class Command {
 // TODO: Add your data members
-/* store the command to execute and pid of the process */
- private:
-  std::string cmd_line;
-
-protected:
-  int args_count;       // holds number of arguments received
-  char **args_val;      // parsed command-line. each cell hold another argument of the command
-  std::string exec_cmd; // string holds the command to execute
-
  public:
   Command(const char* cmd_line);
   virtual ~Command();
@@ -30,8 +15,6 @@ protected:
   //virtual void prepare();
   //virtual void cleanup();
   // TODO: Add your extra methods if needed
-
-
 };
 
 class BuiltInCommand : public Command {
@@ -94,78 +77,19 @@ class QuitCommand : public BuiltInCommand {
   void execute() override;
 };
 
-/*  Built-in commands implementation  */
 
-/*
- * chprompt command - change prompt name
- * it's a built in command => inherits from BuiltInCommand class
- * */
-
-class ChangaPromptDisplayCommand : public BuiltInCommand{
-public:
-    ChangaPromptDisplayCommand(const char *cmd_line);
-
-    virtual ~ChangaPromptDisplayCommand();
-
-    void execute() override;
-};
 
 
 class JobsList {
  public:
-
   class JobEntry {
    // TODO: Add your data members
-   int job_id;
-   int pid;
-   Command *cmd;
-   time_t time_added;
-   bool is_running = true;
-   bool is_stopped = false;
-   public:
-      JobEntry(int jobID, Command *cmd) : job_id(jobID), cmd(cmd), time_added(time(nullptr)), is_stopped(false){
-          // if we for here we can get cmd pid, if we fork elswhere - need to update pid
-      };
-
-      ~JobEntry() {};
-
-      bool getRunningStatus() {
-          return this->is_running; // should be cmd.is_running?
-      }
-
-      bool getStoppedStatus(){
-          return this->is_stopped;
-      }
-
-      void setStoppedStatus(bool status){
-          this->is_stopped = status;
-      }
-
-      int getJobId() const {
-          return this->job_id;
-      }
-
-      int getPid() const {
-          return this->pid;
-      }
-
-      void restartTimer() {
-          this->time_added = time(nullptr);
-      }
-
-
   };
-
  // TODO: Add your data members
-private:
-    std::vector<JobEntry*> jobsEntryArray;
-
  public:
-  JobsList() {
-      jobsEntryArray.push_back(nullptr);
-  };
-  ~JobsList(){};
-  void addJob(Command* cmd, bool isStopped = false); // TODO: make sure to clean job list before adding new commend
+  JobsList();
+  ~JobsList();
+  void addJob(Command* cmd, bool isStopped = false);
   void printJobsList();
   void killAllJobs();
   void removeFinishedJobs();
@@ -173,36 +97,7 @@ private:
   void removeJobById(int jobId);
   JobEntry * getLastJob(int* lastJobId);
   JobEntry *getLastStoppedJob(int *jobId);
-  // TODO: Add extra methods or modify existing ones as needed
-
-  // get updated number of running jobs
-  int jobsCount() {
-      int count = 0;
-      for (JobEntry *job_e : jobsEntryArray){
-          if (!job_e->getRunningStatus() && !job_e->getStoppedStatus()) continue;
-          count++;
-      }
-      return count;
-  }
-
-  std::ostream& print(std::ostream& os) const {
-      for(JobEntry *job : jobsEntryArray){
-          if(!job->getStoppedStatus() && !job->getRunningStatus()){
-              os << fmtJob(job) << std::endl;          }
-      }
-      return os;
-  }
-
-  friend std::ostream &operator<<(std::ostream &os, const JobsList &j) {
-      return j.print(os);
-  }
-
-  const JobEntry *operator[](int id) const { // do I really want const here?
-      if (id < jobsEntryArray.size() && id > 0)
-          return jobsEntryArray[id];
-      else return nullptr;
-  }
-
+  // TODO: Add extra methods or modify exisitng ones as needed
 };
 
 class JobsCommand : public BuiltInCommand {
@@ -248,15 +143,8 @@ class CatCommand : public BuiltInCommand {
 class SmallShell {
  private:
   // TODO: Add your data members
-  JobsList jobsList;
-
-  std::string prompt_name = "smash";
-  int fg_job_id = -1;
-
-  SmallShell() : smash_pid(getpid()) {};
-
+  SmallShell();
  public:
-  const int smash_pid;
   Command *CreateCommand(const char* cmd_line);
   SmallShell(SmallShell const&)      = delete; // disable copy ctor
   void operator=(SmallShell const&)  = delete; // disable = operator
@@ -269,61 +157,6 @@ class SmallShell {
   ~SmallShell();
   void executeCommand(const char* cmd_line);
   // TODO: add extra methods as needed
-
-  std::string getPrompt(){
-      return this->prompt_name;
-  }
-
-  void setPrompt(const std::string &updated_prompt){
-      this->prompt_name = updated_prompt;
-  }
-
-  void setFgJobId(int jobID){
-      this->fg_job_id = jobID;
-  }
-
-  int getFgJobId(int jobID) const {
-      return this->fg_job_id;
-  }
-
-  void execute(const char *cmd_line);
-
-  void killAllJobs(std::ostream &os){
-      jobsList.killAllJobs();
-  }
-
-  std::ostream& print(std::ostream& os) const {
-      return os << this->jobsList;
-  }
-
-  friend std::ostream &operator<<(std::ostream &os, const SmallShell &sm) {
-      return sm.print(os);
-  }
-
-  JobsList::JobEntry* getLastJobIndex(bool isStopped, int *job_index){
-      if(isStopped){
-          return this->jobsList.getLastJob(job_index);
-      } else{
-          return this->jobsList.getLastJob(job_index);
-      }
-  }
-
-  JobsList::JobEntry* getJobByID(int job_id) const {
-      return this->jobsList[job_id];
-  }
-
-  bool checkJobExists(int job_id) const {
-      // should check validity of ID? try-catch?
-      JobsList::JobEntry *jobEntry = getJobByID(job_id);
-      if(jobEntry == nullptr) return false;
-      return jobEntry->getRunningStatus();
-  }
-
-  bool checkJobStopped(int job_id) const {
-      JobsList::JobEntry *jobEntry = getJobByID(job_id);
-      if(jobEntry == nullptr) return false;
-      return jobEntry->getStoppedStatus();
-  }
 };
 
 #endif //SMASH_COMMAND_H_
