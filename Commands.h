@@ -2,12 +2,18 @@
 #define SMASH_COMMAND_H_
 
 #include <vector>
+#include <string>
+#include <list>
 
 #define COMMAND_ARGS_MAX_LENGTH (200)
 #define COMMAND_MAX_ARGS (20)
 
 class Command {
 // TODO: Add your data members
+  std::string cmd_line;
+  char **args;
+  int args_count;
+  bool isBackground = false;
  public:
   Command(const char* cmd_line);
   virtual ~Command();
@@ -15,6 +21,10 @@ class Command {
   //virtual void prepare();
   //virtual void cleanup();
   // TODO: Add your extra methods if needed
+  void delete_args();
+  const char* getCmdLine(){
+      return cmd_line.c_str();
+  }
 };
 
 class BuiltInCommand : public Command {
@@ -77,7 +87,12 @@ class QuitCommand : public BuiltInCommand {
   void execute() override;
 };
 
-
+class ChpromptCommand : public BuiltInCommand{
+public:
+    ChpromptCommand(const char *cmd_line);
+    virtual ~ChpromptCommand();
+    void execute() override;
+};
 
 
 class ShowProcessIdCommand : public BuiltInCommand{
@@ -92,12 +107,46 @@ class JobsList {
  public:
   class JobEntry {
    // TODO: Add your data members
+  private:
+      std::string cmd_line;
+      int job_id;
+      int pid;
+      bool isStopped;
+      bool isBackgroundJob;
+      time_t time_added;
+  public:
+      JobEntry(std::string cmd_line, int jobId, int pid, bool isStopped, bool is_background);
+
+      JobEntry();
+
+      ~JobEntry();
+
+      int getJobId(){
+          return this->job_id;
+      }
+
+      int getJobPid(){
+          return this->pid;
+      }
+
+      std::string getCmdLine(){
+          return this->cmd_line;
+      }
+
+      time_t getStartTime(){
+          return this->time_added;
+      }
+
+      bool isJobStopped(){
+          return this->isStopped;
+      }
+
   };
  // TODO: Add your data members
  public:
   JobsList();
   ~JobsList();
-  void addJob(Command* cmd, bool isStopped = false);
+  void addJob(Command* cmd, bool isStopped = false, int pid = -1);
   void printJobsList();
   void killAllJobs();
   void removeFinishedJobs();
@@ -106,6 +155,11 @@ class JobsList {
   JobEntry * getLastJob(int* lastJobId);
   JobEntry *getLastStoppedJob(int *jobId);
   // TODO: Add extra methods or modify exisitng ones as needed
+
+  friend bool sortJobEntries(JobEntry *job1, JobEntry *job2);
+
+private:
+    std::list<JobEntry*> *job_entry_list;
 };
 
 class JobsCommand : public BuiltInCommand {
@@ -151,6 +205,9 @@ class CatCommand : public BuiltInCommand {
 class SmallShell {
  private:
   // TODO: Add your data members
+  JobsList *job_list;
+  int smashPID;
+  int fg_job_id = -1;
   SmallShell();
  public:
   Command *CreateCommand(const char* cmd_line);
@@ -165,6 +222,18 @@ class SmallShell {
   ~SmallShell();
   void executeCommand(const char* cmd_line);
   // TODO: add extra methods as needed
+
+  int getFgJobId(){
+      return fg_job_id; // update in 2 places: ExtenalCommed::execute, ForegroungCommand (fg/bg)
+  }
+
+  void setFgJobId(int id){
+      fg_job_id = id;
+  }
+
+  JobsList* getJobList(){
+      return job_list;
+  }
 };
 
 #endif //SMASH_COMMAND_H_
