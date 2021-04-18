@@ -84,7 +84,7 @@ JobsList::JobEntry::JobEntry(string cmd_line, int jobId, int pid, bool isStopped
                             pid(pid), isStopped(isStopped), isBackgroundJob(is_background), time_added(time(nullptr)) {}
 
 JobsList::JobsList()  {
-    this->job_entry_list = new std::list<JobEntry*>({});
+    this->job_entry_list = new std::list<JobEntry*>();
 }
 
 JobsList::~JobsList() {
@@ -140,11 +140,13 @@ void JobsList::killAllJobs() {
 
 void JobsList::removeFinishedJobs(){
     std::list<JobEntry*>::iterator jobs_iterator = job_entry_list->begin();
+    if(job_entry_list->empty()) return;
     while (*jobs_iterator != nullptr){
         int res = waitpid((*jobs_iterator)->getJobPid(), nullptr, WNOHANG);
         if (res != 0) {
             delete *jobs_iterator;
         }
+        jobs_iterator++;
     }
 }
 
