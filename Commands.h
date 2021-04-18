@@ -153,8 +153,16 @@ class JobsList {
           return this->time_added;
       }
 
+      void setStopped(bool status){
+          this->isStopped = status;
+      }
+
       bool isJobStopped(){
           return this->isStopped;
+      }
+
+      void setBackground(bool status) {
+          this->isBackgroundJob = status;
       }
 
       bool operator==(const JobsList::JobEntry& job) {
@@ -189,6 +197,10 @@ class JobsList {
   JobEntry* getJobByPID(int job_pid);
 
   void removeJobByPID(int pid);
+
+  bool isEmpty(){
+      return job_entry_list->empty();
+  }
 };
 
 class JobsCommand : public BuiltInCommand {
@@ -269,12 +281,12 @@ class SmallShell {
       return this->smashPID;
   }
 
-  int getFgJobId(){
-      return fg_job_id; // update in 2 places: ExtenalCommed::execute, ForegroungCommand (fg/bg)
+  int getFgJobPID(){
+      return fg_job_pid; // update in 2 places: ExtenalCommed::execute, ForegroungCommand (fg/bg)
   }
 
-  void setFgJobId(int id){
-      fg_job_id = id;
+  void setFgJobPID(int id){
+      fg_job_pid = id;
   }
 
   JobsList* getJobList(){
