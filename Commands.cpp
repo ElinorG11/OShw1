@@ -5,9 +5,12 @@
 #include <sstream>
 #include <sys/wait.h>
 #include <iomanip>
+#include <climits>
 #include "Commands.h"
 
 using namespace std;
+
+const std::string WHITESPACE = " \n\r\t\f\v";
 
 #if 0
 #define FUNC_ENTRY()  \
@@ -80,15 +83,13 @@ void _removeBackgroundSign(char* cmd_line) {
 JobsList::JobEntry::JobEntry(string cmd_line, int jobId, int pid, bool isStopped, bool is_background) : cmd_line(cmd_line), job_id(jobId),
                             pid(pid), isStopped(isStopped), isBackgroundJob(is_background), time_added(time(nullptr)) {}
 
-JobsList::JobsList() {
+JobsList::JobsList()  {
     this->job_entry_list = new std::list<JobEntry*>({});
 }
 
 JobsList::~JobsList() {
-    std::list<JobEntry*>::iterator jobs_iterator = job_entry_list->begin();
-    while (*jobs_iterator != nullptr){
-        delete *jobs_iterator;
-        jobs_iterator++;
+    for(auto j : *job_entry_list){
+        delete j;
     }
     delete job_entry_list;
 }
@@ -105,7 +106,7 @@ void JobsList::addJob(Command *cmd, bool isStopped, int pid) {
         JobsList::getLastJob(&jobId);
     }
     is_background = _isBackgroundComamnd(cmd->getCmdLine());
-    JobEntry *job_entry = new JobEntry(cmd->getCmdLine(), jobId, pid, isStopped, is_background);
+    JobEntry *job_entry = new JobsList::JobEntry(cmd->getCmdLine(), jobId, pid, isStopped, is_background);
     job_entry_list->push_back(job_entry);
     this->job_entry_list->sort(sortJobEntries);
 }
@@ -174,7 +175,7 @@ JobsList::JobEntry * JobsList::getLastJob(int *lastJobId) {
 }
 
 JobsList::JobEntry * JobsList::getLastStoppedJob(int *jobId) {
-    std::list<JobEntry*>::iterator jobs_iterator = job_entry_list->end();
+  std::list<JobEntry*>::iterator jobs_iterator = job_entry_list->end();
     jobs_iterator--;
     while (*jobs_iterator != nullptr){
         if((*jobs_iterator)->isJobStopped()) {
@@ -182,15 +183,26 @@ JobsList::JobEntry * JobsList::getLastStoppedJob(int *jobId) {
             return (*jobs_iterator);
         }
     }
+    return nullptr;
+}
+
+JobsList::JobEntry * JobsList::getJobByPID(int job_pid) {
+    std::list<JobEntry*>::iterator jobs_iterator = job_entry_list->begin();
+    while (*jobs_iterator != nullptr){
+        if((*jobs_iterator)->getJobPid() == job_pid) return (*jobs_iterator);
+    }
+    return nullptr;
 }
 
 SmallShell::SmallShell() : smashPID(getpid()) {
     // TODO: add your implementation
-    JobsList *jobsList = new JobsList();
+
+    this->job_list = new JobsList();
 }
 
 SmallShell::~SmallShell() {
     // TODO: add your implementation
+
     delete job_list;
 }
 
@@ -283,7 +295,7 @@ Command::~Command(){
     delete[] this->args;
 }
 
-BuiltInCommand::BuiltInCommand(const char *cmd_line) : Command(cmd_line) {}
+BuiltInCommand::BuiltInCommand(const char *cmd_line) : Command(cmd_line), smash(SmallShell::getInstance()) {}
 
 ExternalCommand::ExternalCommand(const char *cmd_line) : Command(cmd_line) {}
 
@@ -292,28 +304,154 @@ void ExternalCommand::execute() {
 
     SmallShell &sm = SmallShell::getInstance();
 
-    pid_t child_pid;
+    // pid_t child_pid;
 
-    //bg
-    if(is_background){
-        sm.getJobList()->addJob(this);
+    char *cmd_str = new char[COMMAND_ARGS_MAX_LENGTH];
+    strcpy(cmd_str,this->getCmdLine());
 
-        char *cmd_str = new char[COMMAND_ARGS_MAX_LENGTH];
-        strcpy(cmd_str,this->getCmdLine());
+    if(is_background) _removeBackgroundSign(cmd_str);
 
-        pid_t p = fork();
-        if (p < 0) {
-            perror("smash error: fork failed");
-        }
-        else if (p == 0) { // son
-            setpgrp();
-            char* argv[] = {(char*)"/bin/bash", (char*)"-c", cmd_str, NULL};
-            execv(argv[0], argv);
-            perror("smash error: execv failed");
-        } else { // parent
-
-        }
-
-        delete cmd_str;
+    pid_t p = fork();
+    if (p < 0) {
+        perror("smash error: fork failed");
     }
+    else if (p == 0) { // son
+        setpgrp();
+        char* argv[] = {(char*)"/bin/bash", (char*)"-c", cmd_str, NULL};
+        execv(argv[0], argv);
+        perror("smash error: execv failed");
+    } else { // parent
+        //bg
+        if(is_background){
+            sm.getJobList()->addJob(this);
+        } else { // is foreground
+            JobsList::JobEntry *job_entry = sm.getJobList()->getJobByPID(p);
+            if(job_entry != nullptr) sm.setFgJobId(job_entry->getJobId());
+            waitpid(p,NULL,0 | WUNTRACED);
+            sm.setFgJobId(-1);
+        }
+    }
+
+    delete cmd_str;
+}
+
+/*
+ *
+ *              BUILTIN COMMANDS!
+ *
+ * */
+
+ChpromptCommand::ChpromptCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {}
+
+void ChpromptCommand::execute() {
+    if (this->getNumArgs() < 2) {
+        smash.setPromptName("smash");
+        return;
+    }
+    smash.setPromptName(this->getArgs()[1]);
+}
+
+ShowPidCommand::ShowPidCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {}
+
+void ShowPidCommand::execute() {
+    cout << "smash pid is: " << smash.getSmashId() << endl;
+}
+
+GetCurrDirCommand::GetCurrDirCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {}
+
+void GetCurrDirCommand::execute() {
+    char cwd[PATH_MAX];
+    getcwd(cwd, sizeof(cwd));
+    cout << cwd << endl;
+}
+
+// changed the ctor - not sure why we want to pass additional argument to the ctor?
+ChangeDirCommand::ChangeDirCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {}
+
+void ChangeDirCommand::execute() {
+    char cwd[PATH_MAX], path[PATH_MAX];
+    getcwd(cwd, sizeof(cwd));
+
+    if (this->getNumArgs() > 2) {
+        cout << "smash error: cd: too many arguments" << endl;
+        return;
+    }
+    if (this->getNumArgs() == 2 && strcmp(this->getArgs()[1], "-") == 0 && this->getLastDir().empty()) {
+        cout << "smash error: cd: OLDPWD not set" << endl;
+        return;
+    }
+
+    if (this->getNumArgs() == 1) {
+        strcpy(path, "/");
+    } else if (this->getNumArgs() == 2 && strcmp(this->getArgs()[1], "-") == 0) {
+        strcpy(path, this->getLastDir().c_str());
+    } else {
+        strcpy(path, this->getArgs()[1]);
+    }
+    //END:
+    int res = chdir(path);
+    if (res != 0) {
+        perror("smash error: chdir failed");
+        return;
+    }
+    this->setLastDir(string(cwd));
+}
+
+JobsCommand::JobsCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {}
+
+void JobsCommand::execute() {
+    cout << "dummy exec" << endl;
+}
+
+KillCommand::KillCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {}
+
+void KillCommand::execute() {
+    cout << "dummy exec" << endl;
+}
+
+ForegroundCommand::ForegroundCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {}
+
+void ForegroundCommand::execute() {
+    cout << "dummy exec" << endl;
+}
+
+BackgroundCommand::BackgroundCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {}
+
+void BackgroundCommand::execute() {
+    cout << "dummy exec" << endl;
+}
+
+QuitCommand::QuitCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {}
+
+void QuitCommand::execute() {
+    if (this->getNumArgs() >= 2 && strcmp(this->getArgs()[1], "kill") == 0) {
+        smash.getJobList()->killAllJobs();
+    }
+
+    exit(0);
+}
+
+
+/*
+ *
+ *              SPECIAL COMMANDS!
+ *
+ * */
+
+PipeCommand::PipeCommand(const char *cmd_line) : Command(cmd_line) {}
+
+void PipeCommand::execute() {
+    cout << "dummy exec" << endl;
+}
+
+RedirectionCommand::RedirectionCommand(const char *cmd_line) : Command(cmd_line) {}
+
+void RedirectionCommand::execute() {
+    cout << "dummy exec" << endl;
+}
+
+CatCommand::CatCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {}
+
+void CatCommand::execute() {
+		cout << "dummy exec" << endl;
 }

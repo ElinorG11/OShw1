@@ -25,9 +25,21 @@ class Command {
   const char* getCmdLine(){
       return cmd_line.c_str();
   }
+
+  int getNumArgs(){
+      return this->args_count;
+  }
+
+  char** getArgs(){
+      return this->args;
+  }
 };
 
+class SmallShell;
+
 class BuiltInCommand : public Command {
+protected:
+    SmallShell &smash;
  public:
   BuiltInCommand(const char* cmd_line);
   virtual ~BuiltInCommand() {}
@@ -59,10 +71,20 @@ class RedirectionCommand : public Command {
 };
 
 class ChangeDirCommand : public BuiltInCommand {
-// TODO: Add your data members public:
-  ChangeDirCommand(const char* cmd_line, char** plastPwd);
+  // TODO: Add your data members public:
+private:
+    std::string plastPwd;
+public:
+  // ChangeDirCommand(const char* cmd_line, char** plastPwd);
+  ChangeDirCommand(const char* cmd_line);
   virtual ~ChangeDirCommand() {}
   void execute() override;
+  std::string getLastDir(){
+      return this->plastPwd;
+  }
+  void setLastDir(std::string new_path){
+      this->plastPwd = new_path;
+  }
 };
 
 class GetCurrDirCommand : public BuiltInCommand {
@@ -81,24 +103,18 @@ class ShowPidCommand : public BuiltInCommand {
 
 class JobsList;
 class QuitCommand : public BuiltInCommand {
-// TODO: Add your data members public:
-  QuitCommand(const char* cmd_line, JobsList* jobs);
+// TODO: Add your data members
+public:
+  // QuitCommand(const char* cmd_line, JobsList* jobs);
+  QuitCommand(const char* cmd_line);
   virtual ~QuitCommand() {}
   void execute() override;
 };
 
 class ChpromptCommand : public BuiltInCommand{
 public:
-    ChpromptCommand(const char *cmd_line);
-    virtual ~ChpromptCommand();
-    void execute() override;
-};
-
-
-class ShowProcessIdCommand : public BuiltInCommand{
-public:
-    ShowPidCommand(const char *cmd_line);
-    virtual ~ShowProcessIdCommand();
+    ChpromptCommand(const char* cmd_line);
+    virtual ~ChpromptCommand() {}
     void execute() override;
 };
 
@@ -119,7 +135,7 @@ class JobsList {
 
       JobEntry();
 
-      ~JobEntry();
+      ~JobEntry() = default;
 
       int getJobId(){
           return this->job_id;
@@ -143,6 +159,10 @@ class JobsList {
 
   };
  // TODO: Add your data members
+
+ private:
+    std::list<JobEntry*> *job_entry_list;
+
  public:
   JobsList();
   ~JobsList();
@@ -158,14 +178,14 @@ class JobsList {
 
   friend bool sortJobEntries(JobEntry *job1, JobEntry *job2);
 
-private:
-    std::list<JobEntry*> *job_entry_list;
+  JobEntry* getJobByPID(int job_pid);
 };
 
 class JobsCommand : public BuiltInCommand {
  // TODO: Add your data members
  public:
-  JobsCommand(const char* cmd_line, JobsList* jobs);
+  // JobsCommand(const char* cmd_line, JobsList* jobs);
+  JobsCommand(const char* cmd_line);
   virtual ~JobsCommand() {}
   void execute() override;
 };
@@ -173,7 +193,8 @@ class JobsCommand : public BuiltInCommand {
 class KillCommand : public BuiltInCommand {
  // TODO: Add your data members
  public:
-  KillCommand(const char* cmd_line, JobsList* jobs);
+  // KillCommand(const char* cmd_line, JobsList* jobs);
+  KillCommand(const char* cmd_line);
   virtual ~KillCommand() {}
   void execute() override;
 };
@@ -181,7 +202,8 @@ class KillCommand : public BuiltInCommand {
 class ForegroundCommand : public BuiltInCommand {
  // TODO: Add your data members
  public:
-  ForegroundCommand(const char* cmd_line, JobsList* jobs);
+  // ForegroundCommand(const char* cmd_line, JobsList* jobs);
+  ForegroundCommand(const char* cmd_line);
   virtual ~ForegroundCommand() {}
   void execute() override;
 };
@@ -189,7 +211,8 @@ class ForegroundCommand : public BuiltInCommand {
 class BackgroundCommand : public BuiltInCommand {
  // TODO: Add your data members
  public:
-  BackgroundCommand(const char* cmd_line, JobsList* jobs);
+  // BackgroundCommand(const char* cmd_line, JobsList* jobs);
+  BackgroundCommand(const char* cmd_line);
   virtual ~BackgroundCommand() {}
   void execute() override;
 };
@@ -206,6 +229,7 @@ class SmallShell {
  private:
   // TODO: Add your data members
   JobsList *job_list;
+  std::string prompt_name = "smash";
   int smashPID;
   int fg_job_id = -1;
   SmallShell();
@@ -222,6 +246,18 @@ class SmallShell {
   ~SmallShell();
   void executeCommand(const char* cmd_line);
   // TODO: add extra methods as needed
+
+  void setPromptName(std::string new_name){
+      this->prompt_name = new_name;
+  }
+
+  std::string getPromptName(){
+      return this->prompt_name;
+  }
+
+  int getSmashId(){
+      return this->smashPID;
+  }
 
   int getFgJobId(){
       return fg_job_id; // update in 2 places: ExtenalCommed::execute, ForegroungCommand (fg/bg)
