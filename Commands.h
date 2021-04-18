@@ -157,6 +157,14 @@ class JobsList {
           return this->isStopped;
       }
 
+      bool operator==(const JobsList::JobEntry& job) {
+          return this->getJobId() == job.job_id;
+      }
+
+      bool operator!=(const JobEntry& jb) {
+          return !(*this == jb);
+      }
+
   };
  // TODO: Add your data members
 
@@ -179,6 +187,8 @@ class JobsList {
   friend bool sortJobEntries(JobEntry *job1, JobEntry *job2);
 
   JobEntry* getJobByPID(int job_pid);
+
+  void removeJobByPID(int pid);
 };
 
 class JobsCommand : public BuiltInCommand {
@@ -231,7 +241,7 @@ class SmallShell {
   JobsList *job_list;
   std::string prompt_name = "smash";
   int smashPID;
-  int fg_job_id = -1;
+  int fg_job_pid = -1;
   SmallShell();
  public:
   Command *CreateCommand(const char* cmd_line);

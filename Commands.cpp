@@ -138,15 +138,19 @@ void JobsList::killAllJobs() {
     }
 }
 
+void JobsList::removeJobByPID(int pid){
+    JobEntry *temp = getJobByPID(pid);
+    job_entry_list->remove(temp);
+    delete temp;
+
+}
+
 void JobsList::removeFinishedJobs(){
-    std::list<JobEntry*>::iterator jobs_iterator = job_entry_list->begin();
     if(job_entry_list->empty()) return;
-    while (*jobs_iterator != nullptr){
-        int res = waitpid((*jobs_iterator)->getJobPid(), nullptr, WNOHANG);
-        if (res != 0) {
-            delete *jobs_iterator;
-        }
-        jobs_iterator++;
+    int res = waitpid(-1, nullptr, WNOHANG);
+    while (res != 0){
+        removeJobByPID(res);
+        res = waitpid(-1, nullptr, WNOHANG);
     }
 }
 
@@ -158,6 +162,7 @@ JobsList::JobEntry * JobsList::getJobById(int jobId) {
     std::list<JobEntry*>::iterator jobs_iterator = job_entry_list->begin();
     while (*jobs_iterator != nullptr){
         if((*jobs_iterator)->getJobId() == jobId) return (*jobs_iterator);
+        jobs_iterator++;
     }
     return nullptr;
 }
@@ -165,15 +170,22 @@ JobsList::JobEntry * JobsList::getJobById(int jobId) {
 void JobsList::removeJobById(int jobId) {
     std::list<JobEntry*>::iterator jobs_iterator = job_entry_list->begin();
     while (*jobs_iterator != nullptr){
-        if((*jobs_iterator)->getJobId() == jobId) delete (*jobs_iterator);
+        if((*jobs_iterator)->getJobId() == jobId) {
+            job_entry_list->erase(jobs_iterator);
+            delete (*jobs_iterator);
+        }
+        jobs_iterator++;
     }
 }
 
 JobsList::JobEntry * JobsList::getLastJob(int *lastJobId) {
     std::list<JobEntry*>::iterator last_job = job_entry_list->end();
     last_job--;
-    *lastJobId = (*last_job)->getJobId();
-    return (*last_job);
+    if(*last_job != nullptr){
+        *lastJobId = (*last_job)->getJobId();
+        return (*last_job);
+    }
+    return nullptr;
 }
 
 JobsList::JobEntry * JobsList::getLastStoppedJob(int *jobId) {
@@ -184,6 +196,7 @@ JobsList::JobEntry * JobsList::getLastStoppedJob(int *jobId) {
             *jobId = (*jobs_iterator)->getJobId();
             return (*jobs_iterator);
         }
+        jobs_iterator--;
     }
     return nullptr;
 }
@@ -192,6 +205,7 @@ JobsList::JobEntry * JobsList::getJobByPID(int job_pid) {
     std::list<JobEntry*>::iterator jobs_iterator = job_entry_list->begin();
     while (*jobs_iterator != nullptr){
         if((*jobs_iterator)->getJobPid() == job_pid) return (*jobs_iterator);
+        jobs_iterator++;
     }
     return nullptr;
 }
@@ -306,8 +320,7 @@ void ExternalCommand::execute() {
 
     SmallShell &sm = SmallShell::getInstance();
 
-    // pid_t child_pid;
-
+    /*  */
     char *cmd_str = new char[COMMAND_ARGS_MAX_LENGTH];
     strcpy(cmd_str,this->getCmdLine());
 
@@ -327,8 +340,7 @@ void ExternalCommand::execute() {
         if(is_background){
             sm.getJobList()->addJob(this);
         } else { // is foreground
-            JobsList::JobEntry *job_entry = sm.getJobList()->getJobByPID(p);
-            if(job_entry != nullptr) sm.setFgJobId(job_entry->getJobId());
+            sm.setFgJobId(p);
             waitpid(p,NULL,0 | WUNTRACED);
             sm.setFgJobId(-1);
         }
