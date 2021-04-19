@@ -704,52 +704,63 @@ void CatCommand::execute() {
 
     char **file_ptr = this->getArgs();
 
-    while (*file_ptr){
+    // skip cmd name arg[0] = cat
+    file_ptr++;
+
+    int counter = 0;
+
+    // args is not null-terminated. need to know where to stop - use num of arguments (-1 since we only need the paths)
+    while (counter < (this->getNumArgs() - 1)) {
+        counter++;
 
         // open - no O_CREATE!
-        int fd = open(*file_ptr,O_RDONLY);
+        int fd = open((*file_ptr), O_RDONLY);
 
         // check open
-        if(fd == -1) {
+        if (fd == -1) {
             perror("smash error: open failed");
             return;
         }
 
         // allocate buffer
-        char* buffer = new char[BUFFER_SIZE];
+        char *buffer = new char[BUFFER_SIZE];
+
+        //buffer = nullptr;
 
         // read from file
-        int res = read(fd,(void*)buffer,BUFFER_SIZE);
+        int read_res = read(fd, (void *) buffer, BUFFER_SIZE);
 
         // read error
-        if(res == -1) {
+        if (read_res == -1) {
             perror("smash error: read failed");
             return;
         }
 
-        while (res > 0){ // if res == 0 we're done. if res == -1 - call Houston cause we have a problem.
-            // read from file
-            res = read(fd,(void*)buffer,BUFFER_SIZE);
-
-            // read error
-            if(res == -1) {
-                perror("smash error: read failed");
-                return;
-            }
+        while (read_res > 0) { // if res == 0 we're done. if res == -1 - call Houston cause we have a problem.
 
             // write file to stdout
-            res = write(1,buffer,BUFFER_SIZE); // 1 = fd of stdout
+            int write_res = write(1, buffer, read_res); // 1 = fd of stdout
 
             // write error
-            if(res == -1) {
+            if (write_res == -1) {
                 perror("smash error: write failed");
                 return;
             }
+
             // flush buffer
+
+            // read from file
+            read_res = read(fd, (void *) buffer, BUFFER_SIZE);
+
+            // read error
+            if (read_res == -1) {
+                perror("smash error: read failed");
+                return;
+            }
         }
 
         // read error
-        if(res == -1) {
+        if (read_res == -1) {
             perror("smash error: read failed");
             return;
         }
@@ -757,10 +768,10 @@ void CatCommand::execute() {
         delete buffer;
 
         // close
-        res = close(fd);
+        int clos_res = close(fd);
 
         // check close (?)
-        if(res == -1) {
+        if (clos_res == -1) {
             perror("smash error: close failed");
             return;
         }
