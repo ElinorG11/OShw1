@@ -21,9 +21,15 @@ class Command {
   //virtual void prepare();
   //virtual void cleanup();
   // TODO: Add your extra methods if needed
+
   void delete_args();
-  const char* getCmdLine(){
+
+  std::string getCmdLine(){
       return cmd_line.c_str();
+  }
+
+  void setCmdLine(std::string cmd_line){
+      this->cmd_line = cmd_line;
   }
 
   int getNumArgs(){
@@ -33,6 +39,8 @@ class Command {
   char** getArgs(){
       return this->args;
   }
+
+  bool isBuiltin();
 };
 
 class SmallShell;
@@ -54,9 +62,12 @@ class ExternalCommand : public Command {
 
 class PipeCommand : public Command {
   // TODO: Add your data members
+  Command *cmd1;
+  Command *cmd2;
+  std::string operation;
  public:
   PipeCommand(const char* cmd_line);
-  virtual ~PipeCommand() {}
+  virtual ~PipeCommand();
   void execute() override;
 };
 

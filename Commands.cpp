@@ -6,6 +6,7 @@
 #include <sys/wait.h>
 #include <iomanip>
 #include <climits>
+#include <algorithm>
 #include "Commands.h"
 
 using namespace std;
@@ -22,6 +23,8 @@ const std::string WHITESPACE = " \n\r\t\f\v";
 #define FUNC_ENTRY()
 #define FUNC_EXIT()
 #endif
+
+vector<string> built_in_commands_vec{"chprompt","showpid","pwd","cd","jobs","kill","fg","bg","quit"};
 
 string _ltrim(const std::string& s)
 {
@@ -105,7 +108,7 @@ void JobsList::addJob(Command *cmd, bool isStopped, int pid) {
     else {
         JobsList::getLastJob(&jobId);
     }
-    is_background = _isBackgroundComamnd(cmd->getCmdLine());
+    is_background = _isBackgroundComamnd(cmd->getCmdLine().c_str());
     JobEntry *job_entry = new JobsList::JobEntry(cmd->getCmdLine(), jobId, pid, isStopped, is_background);
     job_entry_list->push_back(job_entry);
     this->job_entry_list->sort(sortJobEntries);
@@ -311,18 +314,22 @@ Command::~Command(){
     delete[] this->args;
 }
 
+bool Command::isBuiltin() {
+    return (std::find(built_in_commands_vec.begin(),built_in_commands_vec.end(),this->getArgs()[1]) != built_in_commands_vec.end());
+}
+
 BuiltInCommand::BuiltInCommand(const char *cmd_line) : Command(cmd_line), smash(SmallShell::getInstance()) {}
 
 ExternalCommand::ExternalCommand(const char *cmd_line) : Command(cmd_line) {}
 
 void ExternalCommand::execute() {
-    bool is_background = _isBackgroundComamnd(this->getCmdLine());
+    bool is_background = _isBackgroundComamnd(this->getCmdLine().c_str());
 
     SmallShell &sm = SmallShell::getInstance();
 
     /*  cast const char* to char* for execv() function in line 336 */
     char *cmd_str = new char[COMMAND_ARGS_MAX_LENGTH];
-    strcpy(cmd_str,this->getCmdLine());
+    strcpy(cmd_str,this->getCmdLine().c_str());
 
     if(is_background) _removeBackgroundSign(cmd_str);
 
@@ -560,10 +567,93 @@ void QuitCommand::execute() {
  *
  * */
 
-PipeCommand::PipeCommand(const char *cmd_line) : Command(cmd_line) {}
+PipeCommand::PipeCommand(const char *cmd_line) : Command(cmd_line) {
+    char cmd_str[COMMAND_ARGS_MAX_LENGTH];
+    strcpy(cmd_str, cmd_line);
+
+    char *line1;
+    char *line2 = cmd_str;
+
+    line1 = strsep(&line2, "|");
+
+    if (line2 && *line2 == '&') {
+        ++line2;
+        this->operation = "|&";
+    } else {
+        this->operation = "|";
+    }
+
+    SmallShell &sm = SmallShell::getInstance();
+
+    this->cmd1 = sm.CreateCommand(line1);
+    this->cmd2 = sm.CreateCommand(line2);
+}
+
+PipeCommand::~PipeCommand() {
+    delete this->cmd1;
+    delete this->cmd2;
+}
+
+enum {
+    RD = 0, WT = 1
+};
 
 void PipeCommand::execute() {
-    cout << "dummy exec" << endl;
+    int channel = (this->operation == "|") ? 1 : 2;
+    int fd[2];
+    pipe(fd);
+    pid_t pid1, pid2;
+
+    // pipe commands are always fg (ignore &) so need to set it as fg command
+    SmallShell &sm = SmallShell::getInstance();
+
+    sm.setFgJobPID(getpid());
+
+    /* Instructor's answer from piazza: two ways for pipe implementation
+     * 1. either redirect IO for builtin commands but don't forget to redirect it back (so smash will function properly)
+     * 2. you may fork builtin commands
+     * */
+    if (!cmd1->isBuiltin()) {
+        pid1 = fork();
+        if (pid1 < 0) {
+            perror("smash error: fork failed");
+            return;
+        } else if (pid1 == 0) {
+            // no need for setpgrp - we want the child to recieve our signals (?)
+            dup2(fd[WT], channel);
+            close(fd[RD]);
+            close(fd[WT]);
+            cmd1->execute();
+            exit(0);
+        }
+    }
+
+    // even if both commands are builtin commands, need to fork since they can't run together in the same smash
+    pid2 = fork();
+    if (pid2 < 0) {
+        perror("smash error: fork failed");
+        return;
+    } else if (pid2 == 0) {
+        dup2(fd[RD], 0);
+        close(fd[RD]);
+        close(fd[WT]);
+        cmd2->execute();
+        exit(0);
+    } else if (cmd1->isBuiltin()) {
+        int temp = dup(channel);
+        dup2(fd[WT], channel);
+        close(fd[RD]);
+        close(fd[WT]);
+        cmd1->execute();
+        dup2(temp, channel);
+    }
+
+    close(fd[RD]);
+    close(fd[WT]);
+    waitpid(pid2, NULL, 0);
+
+    sm.setFgJobPID(-1);
+
 }
 
 RedirectionCommand::RedirectionCommand(const char *cmd_line) : Command(cmd_line) {}
