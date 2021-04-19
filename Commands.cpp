@@ -263,6 +263,8 @@ Command * SmallShell::CreateCommand(const char* cmd_line) {
         cmd = new QuitCommand(cmd_line);
     } else if (firstWord == "chprompt") {
         cmd = new ChpromptCommand(cmd_line);
+    } else if (firstWord == "cat") {
+        cmd = new CatCommand(cmd_line);
     } else {
         cmd = new ExternalCommand(cmd_line);
     }
@@ -339,7 +341,7 @@ void ExternalCommand::execute() {
 
     if(is_background) _removeBackgroundSign(cmd_str);
 
-    pid_t p = fork();
+    int p = fork();
     if (p < 0) {
         perror("smash error: fork failed");
     }
@@ -466,7 +468,7 @@ void KillCommand::execute() {
     pid += std::to_string(job->getJobPid());
     pid += ":";
     pid += job->getCmdLine();
-    if (kill(pid, signal) < 0) {
+    if (kill(job->getJobPid(), signal) < 0) {
         perror("smash error: kill failed");
         return;
     } else{
