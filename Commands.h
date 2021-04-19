@@ -73,9 +73,12 @@ class PipeCommand : public Command {
 
 class RedirectionCommand : public Command {
  // TODO: Add your data members
+ Command *cmd;
+ std::string output_file;
+ std::string operation;
  public:
   explicit RedirectionCommand(const char* cmd_line);
-  virtual ~RedirectionCommand() {}
+  virtual ~RedirectionCommand();
   void execute() override;
   //void prepare() override;
   //void cleanup() override;

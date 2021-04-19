@@ -7,11 +7,17 @@
 #include <iomanip>
 #include <climits>
 #include <algorithm>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <iostream>
+#include <fstream>
 #include "Commands.h"
 
 using namespace std;
 
 const std::string WHITESPACE = " \n\r\t\f\v";
+
+const int BUFFER_SIZE = 1024;
 
 #if 0
 #define FUNC_ENTRY()  \
@@ -656,7 +662,33 @@ void PipeCommand::execute() {
 
 }
 
-RedirectionCommand::RedirectionCommand(const char *cmd_line) : Command(cmd_line) {}
+RedirectionCommand::RedirectionCommand(const char *cmd_line) : Command(cmd_line) {
+    char cmd_str[COMMAND_ARGS_MAX_LENGTH];
+    strcpy(cmd_str, cmd_line);
+
+    char *command_name;
+    char *file_name = cmd_str;
+
+    command_name = strsep(&file_name, ">");
+
+    if (file_name && *file_name == '>') {
+        ++file_name;
+        operation = ">>";
+    } else {
+        operation = ">";
+    }
+
+    std::istringstream iss(_trim(string(file_name)).c_str());
+    iss >> output_file;
+
+    SmallShell &sm = SmallShell::getInstance();
+
+    cmd = sm.CreateCommand(command_name);
+}
+
+RedirectionCommand::~RedirectionCommand() noexcept {
+    delete cmd;
+}
 
 void RedirectionCommand::execute() {
     cout << "dummy exec" << endl;
@@ -665,5 +697,75 @@ void RedirectionCommand::execute() {
 CatCommand::CatCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {}
 
 void CatCommand::execute() {
-		cout << "dummy exec" << endl;
+    if (this->getNumArgs() < 2) {
+        cout << "smash error: cat: not enough arguments" << endl;
+        return;
+    }
+
+    char **file_ptr = this->getArgs();
+
+    while (*file_ptr){
+
+        // open - no O_CREATE!
+        int fd = open(*file_ptr,O_RDONLY);
+
+        // check open
+        if(fd == -1) {
+            perror("smash error: open failed");
+            return;
+        }
+
+        // allocate buffer
+        char* buffer = new char[BUFFER_SIZE];
+
+        // read from file
+        int res = read(fd,(void*)buffer,BUFFER_SIZE);
+
+        // read error
+        if(res == -1) {
+            perror("smash error: read failed");
+            return;
+        }
+
+        while (res > 0){ // if res == 0 we're done. if res == -1 - call Houston cause we have a problem.
+            // read from file
+            res = read(fd,(void*)buffer,BUFFER_SIZE);
+
+            // read error
+            if(res == -1) {
+                perror("smash error: read failed");
+                return;
+            }
+
+            // write file to stdout
+            res = write(1,buffer,BUFFER_SIZE); // 1 = fd of stdout
+
+            // write error
+            if(res == -1) {
+                perror("smash error: write failed");
+                return;
+            }
+            // flush buffer
+        }
+
+        // read error
+        if(res == -1) {
+            perror("smash error: read failed");
+            return;
+        }
+
+        delete buffer;
+
+        // close
+        res = close(fd);
+
+        // check close (?)
+        if(res == -1) {
+            perror("smash error: close failed");
+            return;
+        }
+
+        // continue to next file
+        file_ptr++;
+    }
 }
