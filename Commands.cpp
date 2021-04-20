@@ -30,8 +30,6 @@ const int BUFFER_SIZE = 1024;
 #define FUNC_EXIT()
 #endif
 
-vector<string> built_in_commands_vec{"chprompt","showpid","pwd","cd","jobs","kill","fg","bg","quit"};
-
 string _ltrim(const std::string& s)
 {
   size_t start = s.find_first_not_of(WHITESPACE);
@@ -138,6 +136,7 @@ void JobsList::printJobsList() {
 }
 
 void JobsList::killAllJobs() {
+    if(job_entry_list->empty()) return;
     JobsList::removeFinishedJobs();
     cout << "smash: sending SIGKILL signal to " << job_entry_list->size() << " jobs:" << endl;
     std::list<JobEntry*>::iterator job_iterator = job_entry_list->begin();
@@ -149,17 +148,27 @@ void JobsList::killAllJobs() {
 }
 
 void JobsList::removeJobByPID(int pid){
+    if(job_entry_list->empty()) return;
+    cout << "list not empty" << endl;
     JobEntry *temp = getJobByPID(pid);
+    cout << "got job by pid" << pid << endl;
+    if(temp == nullptr) return;
     job_entry_list->remove(temp);
+    cout << "removed job" << endl;
     delete temp;
+    cout << "job deleted successfully" << endl;
 }
 
 void JobsList::removeFinishedJobs(){
     if(job_entry_list->empty()) return;
-    int res = waitpid(-1, nullptr, WNOHANG);
-    while (res != 0){
+    pid_t res = waitpid(-1, nullptr, WNOHANG);
+    cout << "first res" << res << endl;
+    while (res > 0){
+        cout << "removing finished jobs, still hasnt crushed" << endl;
         removeJobByPID(res);
+        cout << "passed remove job by pid" << endl;
         res = waitpid(-1, nullptr, WNOHANG);
+        cout << "res now is" << res << endl;
     }
 }
 
@@ -169,7 +178,7 @@ void JobsList::removeFinishedJobs(){
  * */
 JobsList::JobEntry * JobsList::getJobById(int jobId) {
     std::list<JobEntry*>::iterator jobs_iterator = job_entry_list->begin();
-    while (*jobs_iterator != nullptr){
+    while (jobs_iterator != job_entry_list->end()){
         if((*jobs_iterator)->getJobId() == jobId) return (*jobs_iterator);
         jobs_iterator++;
     }
@@ -178,7 +187,7 @@ JobsList::JobEntry * JobsList::getJobById(int jobId) {
 
 void JobsList::removeJobById(int jobId) {
     std::list<JobEntry*>::iterator jobs_iterator = job_entry_list->begin();
-    while (*jobs_iterator != nullptr){
+    while (jobs_iterator != job_entry_list->end()){
         if((*jobs_iterator)->getJobId() == jobId) {
             job_entry_list->erase(jobs_iterator);
             delete (*jobs_iterator);
@@ -211,11 +220,20 @@ JobsList::JobEntry * JobsList::getLastStoppedJob(int *jobId) {
 }
 
 JobsList::JobEntry * JobsList::getJobByPID(int job_pid) {
+    if(job_entry_list->empty()) return nullptr;
+    cout << "inside get job by pid - list not empty" << endl;
     std::list<JobEntry*>::iterator jobs_iterator = job_entry_list->begin();
-    while (*jobs_iterator != nullptr){
-        if((*jobs_iterator)->getJobPid() == job_pid) return (*jobs_iterator);
+    cout << "got job iterator" << endl;
+    // TODO: I changed it from *jobs_iterator != nullptr to this aaaaand now we're getting into infinite loop
+    while (jobs_iterator != job_entry_list->end()){
+        cout << "searching for job by pid inside while" << endl;
+        if((*jobs_iterator)->getJobPid() == job_pid) {
+            cout << "found job, job pid: "<< endl;
+            return (*jobs_iterator);
+        }
         jobs_iterator++;
     }
+    cout << "found no job, returning null" << endl;
     return nullptr;
 }
 
@@ -266,6 +284,7 @@ Command * SmallShell::CreateCommand(const char* cmd_line) {
     } else if (firstWord == "cat") {
         cmd = new CatCommand(cmd_line);
     } else {
+        cout << "this is an external command!" << endl;
         cmd = new ExternalCommand(cmd_line);
     }
 
@@ -294,10 +313,17 @@ Command * SmallShell::CreateCommand(const char* cmd_line) {
 void SmallShell::executeCommand(const char *cmd_line) {
   // TODO: Add your implementation here
 
+  cout << "in SM::exec" << endl;
   this->job_list->removeFinishedJobs();
+  cout << "removed jobs from job list b4 executing anothe command";
   Command* cmd = CreateCommand(cmd_line);
-  if(cmd != nullptr) cmd->execute();
-  delete cmd;
+  if(cmd != nullptr) {
+      cout << "executing: " << cmd->getCmdLine() << endl;
+      cmd->execute();
+      cout << "done executing" << endl;
+      delete cmd;
+      cout << "delete successful" << endl;
+  }
 
   // for example:
   // Command* cmd = CreateCommand(cmd_line);
@@ -323,7 +349,8 @@ Command::~Command(){
 }
 
 bool Command::isBuiltin() {
-    return (std::find(built_in_commands_vec.begin(),built_in_commands_vec.end(),this->getArgs()[1]) != built_in_commands_vec.end());
+    char* x = this->args[1];
+    return ((x=="chprompt")||(x=="showpid")||(x=="pwd")||(x=="cd")||(x=="jobs")||(x=="kill")||(x=="fg")||(x=="bg")||(x=="quit"));
 }
 
 BuiltInCommand::BuiltInCommand(const char *cmd_line) : Command(cmd_line), smash(SmallShell::getInstance()) {}
@@ -332,6 +359,7 @@ ExternalCommand::ExternalCommand(const char *cmd_line) : Command(cmd_line) {}
 
 void ExternalCommand::execute() {
     bool is_background = _isBackgroundComamnd(this->getCmdLine().c_str());
+    if(is_background) cout << "this is background command "  << this->getCmdLine() << endl;
 
     SmallShell &sm = SmallShell::getInstance();
 
@@ -341,11 +369,17 @@ void ExternalCommand::execute() {
 
     if(is_background) _removeBackgroundSign(cmd_str);
 
+    cout << "command w.o bg sign " << cmd_str << endl;
+
+    // TODO: try updating job-list b4 forking
+
     int p = fork();
+    cout << p << endl;
     if (p < 0) {
         perror("smash error: fork failed");
     }
     else if (p == 0) { // son
+        cout << "calling bash, C ya! pid child " << getpid() << " father pid " << getppid() << endl;
         setpgrp();
         char* argv[] = {(char*)"/bin/bash", (char*)"-c", cmd_str, NULL};
         execv(argv[0], argv);
@@ -353,15 +387,21 @@ void ExternalCommand::execute() {
     } else { // parent
         //bg
         if(is_background){
+            cout << "I'm bg, job pid " << getpid() << endl;
             sm.getJobList()->addJob(this);
+            cout << "I was added to the job list" << endl;
         } else { // is foreground
             sm.setFgJobPID(p);
+            cout << "job pid " << sm.getFgJobPID() << " child pid " << p << " father pid " << getpid() << endl;
             waitpid(p,NULL,0 | WUNTRACED);
             sm.setFgJobPID(-1);
+            cout << "done waiting, bye!" << endl;
         }
     }
 
-    delete cmd_str;
+    delete[] cmd_str;
+
+    cout << "delete was successful" << endl;
 }
 
 /*
@@ -607,47 +647,60 @@ enum {
 };
 
 void PipeCommand::execute() {
-    int channel = (this->operation == "|") ? 1 : 2;
+    cout << this->operation << endl;
+    int channel = (this->operation == "|") ? 1 : 2; // stdout = 1, stderr = 2
     int fd[2];
     pipe(fd);
     pid_t pid1, pid2;
+    cout << "fd[1] " << fd[1] << " fd[0] " << fd[0] << endl;
 
     // pipe commands are always fg (ignore &) so need to set it as fg command
     SmallShell &sm = SmallShell::getInstance();
 
     sm.setFgJobPID(getpid());
 
+    cout << "pid " << getpid() << endl;
     /* Instructor's answer from piazza: two ways for pipe implementation
      * 1. either redirect IO for builtin commands but don't forget to redirect it back (so smash will function properly)
      * 2. you may fork builtin commands
      * */
+    cout << "cmd1 is " << cmd1->getCmdLine() << endl;
+    cout << "cmd1 is builtin " << cmd1->isBuiltin() << endl;
+
+    cout << "cmd2 is " << cmd2->getCmdLine() << endl;
+    cout << "cmd2 is builtin " << cmd2->isBuiltin() << endl;
     if (!cmd1->isBuiltin()) {
+        cout << "cmd1 is " << cmd1->getCmdLine() << endl;
         pid1 = fork();
         if (pid1 < 0) {
             perror("smash error: fork failed");
             return;
         } else if (pid1 == 0) {
+            cout << "redirection In child " << getpid() << endl;
             // no need for setpgrp - we want the child to recieve our signals (?)
             dup2(fd[WT], channel);
+            // now stdout/stderr point to same file object as fd[WT]. we can close both pipe channels
             close(fd[RD]);
             close(fd[WT]);
             cmd1->execute();
             exit(0);
         }
     }
-
+    cout << "in father  " << getpid() << endl;
     // even if both commands are builtin commands, need to fork since they can't run together in the same smash
     pid2 = fork();
     if (pid2 < 0) {
         perror("smash error: fork failed");
         return;
     } else if (pid2 == 0) {
+        cout << "redirection child 2 cmd2 is " << cmd2->getCmdLine() << " pid is " << getpid() << endl;
         dup2(fd[RD], 0);
         close(fd[RD]);
         close(fd[WT]);
         cmd2->execute();
         exit(0);
     } else if (cmd1->isBuiltin()) {
+        cout << "cmd1 is builtin " << cmd1->getCmdLine() << " pid " << getpid() << endl;
         int temp = dup(channel);
         dup2(fd[WT], channel);
         close(fd[RD]);
@@ -655,7 +708,7 @@ void PipeCommand::execute() {
         cmd1->execute();
         dup2(temp, channel);
     }
-
+    cout << "finished, in father pid " << getpid() << endl;
     close(fd[RD]);
     close(fd[WT]);
     waitpid(pid2, NULL, 0);

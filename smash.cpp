@@ -17,10 +17,15 @@ int main(int argc, char* argv[]) {
 
     SmallShell& smash = SmallShell::getInstance();
     while(true) {
-        std::cout << smash.getPromptName() << "> ";
-        std::string cmd_line;
-        std::getline(std::cin, cmd_line);
-        smash.executeCommand(cmd_line.c_str());
+        int pid = smash.getFgJobPID();
+        if(smash.getFgJobPID() == -1) {
+            std::cout << smash.getPromptName() << "> ";
+            std::string cmd_line;
+            std::getline(std::cin, cmd_line);
+            smash.executeCommand(cmd_line.c_str());
+        } else {
+            waitpid(pid, nullptr, WUNTRACED);
+        }
     }
     return 0;
 }
