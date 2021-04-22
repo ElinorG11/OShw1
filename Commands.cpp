@@ -121,7 +121,7 @@ void JobsList::addJob(Command *cmd, bool isStopped, int pid) {
 void JobsList::printJobsList() {
     JobsList::removeFinishedJobs();
     std::list<JobEntry*>::iterator job_iterator = job_entry_list->begin();
-    while (*job_iterator != nullptr){
+    while (job_iterator != job_entry_list->end()){
         std::string addend;
         if((*job_iterator)->isJobStopped()){
             addend = " secs (stopped)";
@@ -140,7 +140,7 @@ void JobsList::killAllJobs() {
     JobsList::removeFinishedJobs();
     cout << "smash: sending SIGKILL signal to " << job_entry_list->size() << " jobs:" << endl;
     std::list<JobEntry*>::iterator job_iterator = job_entry_list->begin();
-    while(*job_iterator != nullptr){
+    while(job_iterator != job_entry_list->end()){
         cout << (*job_iterator)->getJobPid() << ": " << (*job_iterator)->getCmdLine() << endl;
         if(kill((*job_iterator)->getJobPid(),SIGKILL) == -1) perror("smash error: kill failed");
         job_iterator++;
@@ -390,7 +390,7 @@ void ExternalCommand::execute() {
         //bg
         if(is_background){
             cout << "I'm bg, job pid " << getpid() << endl;
-            sm.getJobList()->addJob(this);
+            sm.getJobList()->addJob(this, false, pid);
             cout << "I was added to the job list" << endl;
         } else { // is foreground
             sm.setFgJobPID(p);
@@ -499,7 +499,7 @@ void KillCommand::execute() {
 
     JobsList *job_list = sm.getJobList();
 
-    JobsList::JobEntry *job = job_list->getJobById(job_id);
+    JobsList::JobEntry *job = job_list->getJobByPID(job->getJobPid());
 
     if (job == nullptr) {
         cout << "smash error: kill: job-id " << job_id << " does not exist" << endl;
