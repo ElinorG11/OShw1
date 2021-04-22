@@ -87,18 +87,18 @@ class RedirectionCommand : public Command {
 class ChangeDirCommand : public BuiltInCommand {
   // TODO: Add your data members public:
 private:
-    std::string plastPwd;
+    //std::string plastPwd;
 public:
   // ChangeDirCommand(const char* cmd_line, char** plastPwd);
   ChangeDirCommand(const char* cmd_line);
   virtual ~ChangeDirCommand() {}
   void execute() override;
-  std::string getLastDir(){
+  /*std::string getLastDir(){
       return this->plastPwd;
   }
   void setLastDir(std::string new_path){
       this->plastPwd = new_path;
-  }
+  }*/
 };
 
 class GetCurrDirCommand : public BuiltInCommand {
@@ -268,6 +268,7 @@ class SmallShell {
   std::string prompt_name = "smash";
   int smashPID;
   int fg_job_pid = -1;
+  std::string plastPwd;
   SmallShell();
  public:
   Command *CreateCommand(const char* cmd_line);
@@ -305,6 +306,12 @@ class SmallShell {
 
   JobsList* getJobList(){
       return job_list;
+  }
+  std::string getLastDir(){
+      return this->plastPwd;
+  }
+  void setLastDir(std::string new_path){
+      this->plastPwd = new_path;
   }
 };
 

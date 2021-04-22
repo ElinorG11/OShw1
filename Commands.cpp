@@ -108,12 +108,12 @@ bool sortJobEntries(JobsList::JobEntry *job1, JobsList::JobEntry *job2){
 void JobsList::addJob(Command *cmd, bool isStopped, int pid) {
     int jobId;
     bool is_background;
-    if(job_entry_list->empty()) jobId = 1;
+    if(job_entry_list->empty()) jobId = 0;
     else {
         JobsList::getLastJob(&jobId);
     }
     is_background = _isBackgroundComamnd(cmd->getCmdLine().c_str());
-    JobEntry *job_entry = new JobsList::JobEntry(cmd->getCmdLine(), jobId, pid, isStopped, is_background);
+    JobEntry *job_entry = new JobsList::JobEntry(cmd->getCmdLine(), jobId + 1, pid, isStopped, is_background);
     job_entry_list->push_back(job_entry);
     this->job_entry_list->sort(sortJobEntries);
 }
@@ -129,7 +129,7 @@ void JobsList::printJobsList() {
         else {
             addend = " secs";
         }
-        cout << (*job_iterator)->getJobId() << (*job_iterator)->getCmdLine() << " : " << (*job_iterator)->getJobPid() <<
+        cout << "[" << (*job_iterator)->getJobId() << "] " << (*job_iterator)->getCmdLine() << " : " << (*job_iterator)->getJobPid() <<
              difftime(time(nullptr),(*job_iterator)->getStartTime()) << addend << endl;
         job_iterator++;
     }
@@ -390,7 +390,7 @@ void ExternalCommand::execute() {
         //bg
         if(is_background){
             cout << "I'm bg, job pid " << getpid() << endl;
-            sm.getJobList()->addJob(this, false, pid);
+            sm.getJobList()->addJob(this, false, p);
             cout << "I was added to the job list" << endl;
         } else { // is foreground
             sm.setFgJobPID(p);
@@ -447,17 +447,17 @@ void ChangeDirCommand::execute() {
         cout << "smash error: cd: too many arguments" << endl;
         return;
     }
-    if (this->getNumArgs() == 2 && strcmp(this->getArgs()[1], "-") == 0 && this->getLastDir().empty()) {
+    if (this->getNumArgs() == 2 && strcmp(this->getArgs()[1], "-") == 0 && this->smash.getLastDir().empty()) {
         cout << "smash error: cd: OLDPWD not set" << endl;
         return;
     }
 
     if (this->getNumArgs() == 1) {
-        strcpy(path, "/");
+        strcpy(path, "/"); // stay at the same location
     } else if (this->getNumArgs() == 2 && strcmp(this->getArgs()[1], "-") == 0) {
-        strcpy(path, this->getLastDir().c_str());
+        strcpy(path, this->smash.getLastDir().c_str()); // go to last dir
     } else {
-        strcpy(path, this->getArgs()[1]);
+        strcpy(path, this->getArgs()[1]); // go to the path specified in args[1]
     }
 
     int res = chdir(path);
@@ -465,7 +465,7 @@ void ChangeDirCommand::execute() {
         perror("smash error: chdir failed");
         return;
     }
-    this->setLastDir(string(cwd));
+    this->smash.setLastDir(string(cwd));
 }
 
 JobsCommand::JobsCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {}
@@ -499,7 +499,7 @@ void KillCommand::execute() {
 
     JobsList *job_list = sm.getJobList();
 
-    JobsList::JobEntry *job = job_list->getJobById(job_id));
+    JobsList::JobEntry *job = job_list->getJobById(job_id);
 
     if (job == nullptr) {
         cout << "smash error: kill: job-id " << job_id << " does not exist" << endl;
