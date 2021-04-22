@@ -493,28 +493,36 @@ void KillCommand::execute() {
     }
 
     int job_id = atoi(this->getArgs()[2]);
-    int signal = atoi(this->getArgs()[1] + 1);
+    int signal_number = atoi(this->getArgs()[1] + 1);
 
     SmallShell &sm = SmallShell::getInstance();
 
     JobsList *job_list = sm.getJobList();
 
-    JobsList::JobEntry *job = job_list->getJobByPID(job->getJobPid());
+    JobsList::JobEntry *job = job_list->getJobById(job_id));
 
     if (job == nullptr) {
         cout << "smash error: kill: job-id " << job_id << " does not exist" << endl;
         return;
     }
 
+    switch(signal_number) {
+        case SIGSTOP:
+            job->setStopped(true);
+            break;
+        case SIGCONT:
+            job->setStopped(false);
+    }
+
     string pid;
     pid += std::to_string(job->getJobPid());
     pid += ":";
     pid += job->getCmdLine();
-    if (kill(job->getJobPid(), signal) < 0) {
+    if (kill(job->getJobPid(), signal_number) < 0) {
         perror("smash error: kill failed");
         return;
-    } else{
-        cout << "signal number " << signal << " was sent to pid " << pid << endl;
+    } else {
+        cout << "signal number " << signal_number << " was sent to pid " << pid << endl;
     }
 }
 
@@ -545,6 +553,8 @@ void ForegroundCommand::execute() {
     }
 
     cout << job->getCmdLine() << " : " << job->getJobPid() << endl;
+
+    job->setStopped(false);
 
     smash.setFgJobPID(job->getJobPid());
 	
@@ -605,12 +615,12 @@ void BackgroundCommand::execute() {
 
     // DO_SYS(kill(job->getJobPid(),SIGCONT)); // macro to checks syscall integrity
 
+    job->setStopped(false);
+
     if(kill(job->getJobPid(),SIGCONT)==-1){
         perror("smash error: kill failed");
         return;
     }
-
-    job->setStopped(false);
 }
 
 QuitCommand::QuitCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {}
@@ -662,10 +672,12 @@ enum {
 
 void PipeCommand::execute() {
     cout << this->operation << endl;
+
     int channel = (this->operation == "|") ? 1 : 2; // stdout = 1, stderr = 2
     int fd[2];
     pipe(fd);
     pid_t pid1, pid2;
+
     cout << "fd[1] " << fd[1] << " fd[0] " << fd[0] << endl;
 
     // pipe commands are always fg (ignore &) so need to set it as fg command
@@ -689,7 +701,7 @@ void PipeCommand::execute() {
         if (pid1 < 0) {
             perror("smash error: fork failed");
             return;
-        } else if (pid1 == 0) {
+        } else if (pid1 == 0) { // child
             cout << "redirection In child " << getpid() << endl;
             // no need for setpgrp - we want the child to recieve our signals (?)
             dup2(fd[WT], channel);
@@ -700,6 +712,7 @@ void PipeCommand::execute() {
             exit(0);
         }
     }
+
     cout << "in father  " << getpid() << endl;
     // even if both commands are builtin commands, need to fork since they can't run together in the same smash
     pid2 = fork();
