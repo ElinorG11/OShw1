@@ -186,6 +186,7 @@ JobsList::JobEntry * JobsList::getJobById(int jobId) {
 }
 
 void JobsList::removeJobById(int jobId) {
+	if(job_entry_list->empty()) return;
     std::list<JobEntry*>::iterator jobs_iterator = job_entry_list->begin();
     while (jobs_iterator != job_entry_list->end()){
         if((*jobs_iterator)->getJobId() == jobId) {
@@ -197,6 +198,7 @@ void JobsList::removeJobById(int jobId) {
 }
 
 JobsList::JobEntry * JobsList::getLastJob(int *lastJobId) {
+	if(job_entry_list->empty()) return nullptr;
     std::list<JobEntry*>::iterator last_job = job_entry_list->end();
     last_job--;
     if(*last_job != nullptr){
@@ -207,9 +209,10 @@ JobsList::JobEntry * JobsList::getLastJob(int *lastJobId) {
 }
 
 JobsList::JobEntry * JobsList::getLastStoppedJob(int *jobId) {
+  if(job_entry_list->empty()) return nullptr;
   std::list<JobEntry*>::iterator jobs_iterator = job_entry_list->end();
     jobs_iterator--;
-    while (*jobs_iterator != nullptr){
+    while (jobs_iterator != job_entry_list->end()){
         if((*jobs_iterator)->isJobStopped()) {
             *jobId = (*jobs_iterator)->getJobId();
             return (*jobs_iterator);
@@ -224,7 +227,6 @@ JobsList::JobEntry * JobsList::getJobByPID(int job_pid) {
     cout << "inside get job by pid - list not empty" << endl;
     std::list<JobEntry*>::iterator jobs_iterator = job_entry_list->begin();
     cout << "got job iterator" << endl;
-    // TODO: I changed it from *jobs_iterator != nullptr to this aaaaand now we're getting into infinite loop
     while (jobs_iterator != job_entry_list->end()){
         cout << "searching for job by pid inside while" << endl;
         if((*jobs_iterator)->getJobPid() == job_pid) {
@@ -544,21 +546,31 @@ void ForegroundCommand::execute() {
 
     cout << job->getCmdLine() << " : " << job->getJobPid() << endl;
 
-    smash.setFgJobPID(job_id);
+    smash.setFgJobPID(job->getJobPid());
+	
+	cout << "new smash pid: " << smash.getFgJobPID() << endl;
 
     if(kill(job->getJobPid(),SIGCONT) < 0){
         perror("smash error: kill failed");
         return;
     }
+	
+	cout << "kill signal SIGCONT sent" << endl;
 
-    smash.getJobList()->removeJobById(job_id);
+    smash.getJobList()->removeJobByPID(job->getJobPid());
+	
+	cout << "removed job successfully" << endl;
 
     if(waitpid(job->getJobPid(),NULL,0 | WUNTRACED) < 0){
         perror("smash error: waitpid failed");
         return;
     }
+	
+	cout << "done waiting" << endl;
 
     smash.setFgJobPID(-1);
+	
+	cout << "fg job pid was reset" << endl;
 }
 
 BackgroundCommand::BackgroundCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {}
@@ -590,6 +602,8 @@ void BackgroundCommand::execute() {
     }
 
     cout << job->getCmdLine() << " : " << job->getJobPid() << endl;
+
+    // DO_SYS(kill(job->getJobPid(),SIGCONT)); // macro to checks syscall integrity
 
     if(kill(job->getJobPid(),SIGCONT)==-1){
         perror("smash error: kill failed");
