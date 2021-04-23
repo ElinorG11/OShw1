@@ -507,14 +507,6 @@ void KillCommand::execute() {
         return;
     }
 
-    switch(signal_number) {
-        case SIGSTOP:
-            job->setStopped(true);
-            break;
-        case SIGCONT:
-            job->setStopped(false);
-    }
-
     string pid;
     pid += std::to_string(job->getJobPid());
     pid += ":";
@@ -524,6 +516,16 @@ void KillCommand::execute() {
         return;
     } else {
         cout << "signal number " << signal_number << " was sent to pid " << pid << endl;
+    }
+    
+    switch(signal_number) {
+        case SIGSTOP:
+            job->setStopped(true);
+            break;
+        case SIGCONT:
+            job->setStopped(false);
+        case SIGKILL:
+			job_list->removeJobByPID(job->getJobPid());
     }
 }
 
