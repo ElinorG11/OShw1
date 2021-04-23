@@ -17,7 +17,9 @@ void ctrlCHandler(int sig_num) {
     int pid = smash.getFgJobPID();
     if (smash.getJobList()->getJobByPID(pid) != nullptr) {
         int fg_job_id = smash.getJobList()->getJobByPID(pid)->getJobId();
-        kill(pid, sig_num);
+        if(kill(pid, sig_num) <0) {
+				perror("smash error: kill failed");
+		}
         smash.setFgJobPID(-1);
         cout << "smash: process " << pid << " was killed" << endl << flush;
     }
