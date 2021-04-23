@@ -252,15 +252,28 @@ SmallShell::~SmallShell() {
     delete job_list;
 }
 
+bool isBuiltInCmd(string firstWord){
+    return ((firstWord=="chprompt")||(firstWord=="showpid")||(firstWord=="pwd")||(firstWord=="cd")||(firstWord=="jobs")||
+            (firstWord=="kill")||(firstWord=="fg")||(firstWord=="bg")||(firstWord=="quit"));
+}
+
 /**
 * Creates and returns a pointer to Command class which matches the given command line (cmd_line)
 */
 Command * SmallShell::CreateCommand(const char* cmd_line) {
 
     string cmd_s = _trim(string(cmd_line));
-    string firstWord = cmd_s.substr(0, cmd_s.find_first_of(" \n"));
+    string first_word = cmd_s.substr(0, cmd_s.find_first_of(" \n"));
 
-    Command* cmd; // create cmd pointer will be allocated below
+    // need to get rid of & in builtin commands somehow
+    char *first_word_to_check = new char[COMMAND_ARGS_MAX_LENGTH];
+    strcpy(first_word_to_check, first_word.c_str());
+
+    if(isBuiltInCmd(first_word.substr(0,first_word.size() - 1))) _removeBackgroundSign(first_word_to_check);
+
+    string firstWord = first_word_to_check;
+
+    Command* cmd; // create cmd pointer, will be allocated below
 
     if (strstr(cmd_line, ">>") || strstr(cmd_line, ">")) {
         cmd = new RedirectionCommand(cmd_line);
@@ -290,6 +303,8 @@ Command * SmallShell::CreateCommand(const char* cmd_line) {
         //cout << "this is an external command!" << endl;
         cmd = new ExternalCommand(cmd_line);
     }
+
+    delete[] first_word_to_check;
 
     return cmd;
 
@@ -454,7 +469,8 @@ void ChangeDirCommand::execute() {
     }
 
     if (this->getNumArgs() == 1) {
-        strcpy(path, "/"); // stay at the same location
+        // strcpy(path, "/"); // Not sure if we need to do nothing or go to root dir https://piazza.com/class/kmeyq2ecrv940z?cid=89
+        return;
     } else if (this->getNumArgs() == 2 && strcmp(this->getArgs()[1], "-") == 0) {
         strcpy(path, this->smash.getLastDir().c_str()); // go to last dir
     } else {
