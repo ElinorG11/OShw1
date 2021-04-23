@@ -136,7 +136,7 @@ void JobsList::printJobsList() {
 }
 
 void JobsList::killAllJobs() {
-    if(job_entry_list->empty()) return;
+    //if(job_entry_list->empty()) return;
     JobsList::removeFinishedJobs();
     cout << "smash: sending SIGKILL signal to " << job_entry_list->size() << " jobs:" << endl;
     std::list<JobEntry*>::iterator job_iterator = job_entry_list->begin();
@@ -149,26 +149,26 @@ void JobsList::killAllJobs() {
 
 void JobsList::removeJobByPID(int pid){
     if(job_entry_list->empty()) return;
-    cout << "list not empty" << endl;
+    //cout << "list not empty" << endl;
     JobEntry *temp = getJobByPID(pid);
-    cout << "got job by pid" << pid << endl;
+    //cout << "got job by pid" << pid << endl;
     if(temp == nullptr) return;
     job_entry_list->remove(temp);
-    cout << "removed job" << endl;
+    //cout << "removed job" << endl;
     delete temp;
-    cout << "job deleted successfully" << endl;
+    //cout << "job deleted successfully" << endl;
 }
 
 void JobsList::removeFinishedJobs(){
     if(job_entry_list->empty()) return;
     pid_t res = waitpid(-1, nullptr, WNOHANG);
-    cout << "first res" << res << endl;
+    //cout << "first res" << res << endl;
     while (res > 0){
-        cout << "removing finished jobs, still hasnt crushed" << endl;
+        //cout << "removing finished jobs, still hasnt crushed" << endl;
         removeJobByPID(res);
-        cout << "passed remove job by pid" << endl;
+        //cout << "passed remove job by pid" << endl;
         res = waitpid(-1, nullptr, WNOHANG);
-        cout << "res now is" << res << endl;
+        //cout << "res now is" << res << endl;
     }
 }
 
@@ -177,6 +177,7 @@ void JobsList::removeFinishedJobs(){
  * it doesn't remove the item from the list!
  * */
 JobsList::JobEntry * JobsList::getJobById(int jobId) {
+	if(job_entry_list->empty()) return nullptr;
     std::list<JobEntry*>::iterator jobs_iterator = job_entry_list->begin();
     while (jobs_iterator != job_entry_list->end()){
         if((*jobs_iterator)->getJobId() == jobId) return (*jobs_iterator);
@@ -224,18 +225,18 @@ JobsList::JobEntry * JobsList::getLastStoppedJob(int *jobId) {
 
 JobsList::JobEntry * JobsList::getJobByPID(int job_pid) {
     if(job_entry_list->empty()) return nullptr;
-    cout << "inside get job by pid - list not empty" << endl;
+    //cout << "inside get job by pid - list not empty" << endl;
     std::list<JobEntry*>::iterator jobs_iterator = job_entry_list->begin();
-    cout << "got job iterator" << endl;
+    //cout << "got job iterator" << endl;
     while (jobs_iterator != job_entry_list->end()){
-        cout << "searching for job by pid inside while" << endl;
+        //cout << "searching for job by pid inside while" << endl;
         if((*jobs_iterator)->getJobPid() == job_pid) {
-            cout << "found job, job pid: "<< endl;
+            //cout << "found job, job pid: "<< endl;
             return (*jobs_iterator);
         }
         jobs_iterator++;
     }
-    cout << "found no job, returning null" << endl;
+    //cout << "found no job, returning null" << endl;
     return nullptr;
 }
 
@@ -286,7 +287,7 @@ Command * SmallShell::CreateCommand(const char* cmd_line) {
     } else if (firstWord == "cat") {
         cmd = new CatCommand(cmd_line);
     } else {
-        cout << "this is an external command!" << endl;
+        //cout << "this is an external command!" << endl;
         cmd = new ExternalCommand(cmd_line);
     }
 
@@ -315,16 +316,16 @@ Command * SmallShell::CreateCommand(const char* cmd_line) {
 void SmallShell::executeCommand(const char *cmd_line) {
   // TODO: Add your implementation here
 
-  cout << "in SM::exec" << endl;
+  //cout << "in SM::exec" << endl;
   this->job_list->removeFinishedJobs();
-  cout << "removed jobs from job list b4 executing anothe command";
+  //cout << "removed jobs from job list b4 executing anothe command";
   Command* cmd = CreateCommand(cmd_line);
   if(cmd != nullptr) {
-      cout << "executing: " << cmd->getCmdLine() << endl;
+      //cout << "executing: " << cmd->getCmdLine() << endl;
       cmd->execute();
-      cout << "done executing" << endl;
+      //cout << "done executing" << endl;
       delete cmd;
-      cout << "delete successful" << endl;
+      //cout << "delete successful" << endl;
   }
 
   // for example:
@@ -361,7 +362,7 @@ ExternalCommand::ExternalCommand(const char *cmd_line) : Command(cmd_line) {}
 
 void ExternalCommand::execute() {
     bool is_background = _isBackgroundComamnd(this->getCmdLine().c_str());
-    if(is_background) cout << "this is background command "  << this->getCmdLine() << endl;
+    //if(is_background) cout << "this is background command "  << this->getCmdLine() << endl;
 
     SmallShell &sm = SmallShell::getInstance();
 
@@ -371,17 +372,17 @@ void ExternalCommand::execute() {
 
     if(is_background) _removeBackgroundSign(cmd_str);
 
-    cout << "command w.o bg sign " << cmd_str << endl;
+    //cout << "command w.o bg sign " << cmd_str << endl;
 
     // TODO: try updating job-list b4 forking
 
     int p = fork();
-    cout << p << endl;
+    //cout << p << endl;
     if (p < 0) {
         perror("smash error: fork failed");
     }
     else if (p == 0) { // son
-        cout << "calling bash, C ya! pid child " << getpid() << " father pid " << getppid() << endl;
+        //cout << "calling bash, C ya! pid child " << getpid() << " father pid " << getppid() << endl;
         setpgrp();
         char* argv[] = {(char*)"/bin/bash", (char*)"-c", cmd_str, NULL};
         execv(argv[0], argv);
@@ -389,21 +390,21 @@ void ExternalCommand::execute() {
     } else { // parent
         //bg
         if(is_background){
-            cout << "I'm bg, job pid " << getpid() << endl;
+            //cout << "I'm bg, job pid " << getpid() << endl;
             sm.getJobList()->addJob(this, false, p);
-            cout << "I was added to the job list" << endl;
+            //cout << "I was added to the job list" << endl;
         } else { // is foreground
             sm.setFgJobPID(p);
-            cout << "job pid " << sm.getFgJobPID() << " child pid " << p << " father pid " << getpid() << endl;
+            //cout << "job pid " << sm.getFgJobPID() << " child pid " << p << " father pid " << getpid() << endl;
             waitpid(p,NULL,0 | WUNTRACED);
             sm.setFgJobPID(-1);
-            cout << "done waiting, bye!" << endl;
+            //cout << "done waiting, bye!" << endl;
         }
     }
 
     delete[] cmd_str;
 
-    cout << "delete was successful" << endl;
+    //cout << "delete was successful" << endl;
 }
 
 /*
@@ -506,14 +507,6 @@ void KillCommand::execute() {
         return;
     }
 
-    switch(signal_number) {
-        case SIGSTOP:
-            job->setStopped(true);
-            break;
-        case SIGCONT:
-            job->setStopped(false);
-    }
-
     string pid;
     pid += std::to_string(job->getJobPid());
     pid += ":";
@@ -523,6 +516,16 @@ void KillCommand::execute() {
         return;
     } else {
         cout << "signal number " << signal_number << " was sent to pid " << pid << endl;
+    }
+    
+    switch(signal_number) {
+        case SIGSTOP:
+            job->setStopped(true);
+            break;
+        case SIGCONT:
+            job->setStopped(false);
+        case SIGKILL:
+			job_list->removeJobByPID(job->getJobPid());
     }
 }
 
@@ -558,29 +561,31 @@ void ForegroundCommand::execute() {
 
     smash.setFgJobPID(job->getJobPid());
 	
-	cout << "new smash pid: " << smash.getFgJobPID() << endl;
+	//cout << "new smash pid: " << smash.getFgJobPID() << endl;
 
     if(kill(job->getJobPid(),SIGCONT) < 0){
         perror("smash error: kill failed");
         return;
     }
 	
-	cout << "kill signal SIGCONT sent" << endl;
+	//cout << "kill signal SIGCONT sent" << endl;
 
-    smash.getJobList()->removeJobByPID(job->getJobPid());
+    
 	
-	cout << "removed job successfully" << endl;
+	//cout << "removed job successfully" << endl;
 
     if(waitpid(job->getJobPid(),NULL,0 | WUNTRACED) < 0){
         perror("smash error: waitpid failed");
         return;
     }
+    
+    smash.getJobList()->removeJobByPID(job->getJobPid());
 	
-	cout << "done waiting" << endl;
+	//cout << "done waiting" << endl;
 
     smash.setFgJobPID(-1);
 	
-	cout << "fg job pid was reset" << endl;
+	//cout << "fg job pid was reset" << endl;
 }
 
 BackgroundCommand::BackgroundCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {}
