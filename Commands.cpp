@@ -660,15 +660,21 @@ void QuitCommand::execute() {
  *
  * */
 
+
+/**
+ * Pipe constructor
+ * @param cmd_line - the command string
+ */
 PipeCommand::PipeCommand(const char *cmd_line) : Command(cmd_line) {
     char cmd_str[COMMAND_ARGS_MAX_LENGTH];
     strcpy(cmd_str, cmd_line);
 
+//  separate the first and second commands by the pipe symbol
     char *line1;
     char *line2 = cmd_str;
-
     line1 = strsep(&line2, "|");
 
+//  check what type of pipe to create and set the operation field of the command accordingly
     if (line2 && *line2 == '&') {
         ++line2;
         this->operation = "|&";
@@ -676,36 +682,51 @@ PipeCommand::PipeCommand(const char *cmd_line) : Command(cmd_line) {
         this->operation = "|";
     }
 
+//  create command object for each command and set the appropriate PipeCommand fields accordingly
     SmallShell &sm = SmallShell::getInstance();
 
     this->cmd1 = sm.CreateCommand(line1);
     this->cmd2 = sm.CreateCommand(line2);
 }
 
+
+/**
+ * Pipe destructor
+ */
 PipeCommand::~PipeCommand() {
     delete this->cmd1;
     delete this->cmd2;
 }
 
+// Read and Write enums for the FD returned by the pipe
 enum {
     RD = 0, WT = 1
 };
 
+/**
+ * Pipe execute command.
+ *
+ */
 void PipeCommand::execute() {
+// what is this for?
     cout << this->operation << endl;
 
+//  chooses the right FD according to the pipe command (stdout or stderr)
     int channel = (this->operation == "|") ? 1 : 2; // stdout = 1, stderr = 2
+
+//  create the pipe
     int fd[2];
     pipe(fd);
     pid_t pid1, pid2;
 
+// what is this for?
     cout << "fd[1] " << fd[1] << " fd[0] " << fd[0] << endl;
 
-    // pipe commands are always fg (ignore &) so need to set it as fg command
+// pipe commands are always fg (ignore &) so need to set it as fg command
     SmallShell &sm = SmallShell::getInstance();
-
     sm.setFgJobPID(getpid());
 
+// what is this for?
     cout << "pid " << getpid() << endl;
     /* Instructor's answer from piazza: two ways for pipe implementation
      * 1. either redirect IO for builtin commands but don't forget to redirect it back (so smash will function properly)
@@ -716,6 +737,9 @@ void PipeCommand::execute() {
 
     cout << "cmd2 is " << cmd2->getCmdLine() << endl;
     cout << "cmd2 is builtin " << cmd2->isBuiltin() << endl;
+
+
+// runs  cmd1 with redirection of output if cmd1 is external
     if (!cmd1->isBuiltin()) {
         cout << "cmd1 is " << cmd1->getCmdLine() << endl;
         pid1 = fork();
@@ -734,6 +758,9 @@ void PipeCommand::execute() {
         }
     }
 
+
+
+// runs cmd2 with redirection of input
     cout << "in father  " << getpid() << endl;
     // even if both commands are builtin commands, need to fork since they can't run together in the same smash
     pid2 = fork();
