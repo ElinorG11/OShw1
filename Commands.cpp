@@ -113,26 +113,18 @@ void JobsList::addJob(Command *cmd, bool isStopped, int pid, int job_id) {
     int jobId;
     bool is_background;
 
-    if(job_entry_list->empty()) jobId = 0;
+    if(job_entry_list->empty()) jobId = 1;
 
     // in case the job is added for the first time
     else if(job_id == -1) {
         JobsList::getLastJob(&jobId);
-    }
-
-    else {
-        JobEntry *jobEntry = JobsList::getJobById(job_id);
-
-        // meaning the index in the job id is free and we can give the continued job it's old index
-        if(jobEntry == nullptr){
-            jobId = job_id;
-        } else { // someone has already occupied this index, set new index to max_job_id +1
-            JobsList::getLastJob(&jobId);
-        }
+        jobId += 1;
+    } else { // job is continued
+        jobId = job_id;
     }
 
     is_background = _isBackgroundComamnd(cmd->getCmdLine().c_str());
-    JobEntry *job_entry = new JobsList::JobEntry(cmd->getCmdLine(), jobId + 1, pid, isStopped, is_background);
+    JobEntry *job_entry = new JobsList::JobEntry(cmd->getCmdLine(), jobId, pid, isStopped, is_background);
     job_entry_list->push_back(job_entry);
     this->job_entry_list->sort(sortJobEntries);
 }

@@ -15,6 +15,7 @@ void ctrlZHandler(int sig_num) {
      * addJob function will use it's old id. If the old Id is taken, it will set its index to max_index + 1
      */
     // smash.getJobList()->addJob(job->getCmdLine(), job->getPid(), smash.getFgJobID());
+    // smash.setFgJobID(-1)
 
 }
 
