@@ -256,12 +256,14 @@ SmallShell::SmallShell() : smashPID(getpid()) {
     // TODO: add your implementation
 
     this->job_list = new JobsList();
+    this->timeout_list = new TimeOutList();
 }
 
 SmallShell::~SmallShell() {
     // TODO: add your implementation
 
     delete job_list;
+    delete timeout_list;
 }
 
 bool isBuiltInCmd(string firstWord){
@@ -292,7 +294,9 @@ Command * SmallShell::CreateCommand(const char* cmd_line) {
 
     Command* cmd; // create cmd pointer, will be allocated below
 
-    if (strstr(cmd_line, ">>") || strstr(cmd_line, ">")) {
+    if(firstWord == "timeout") {
+        cmd = new TimeOutCommand(cmd_line);
+    } else if (strstr(cmd_line, ">>") || strstr(cmd_line, ">")) {
         cmd = new RedirectionCommand(cmd_line);
     } else if (strstr(cmd_line, "|") || strstr(cmd_line, "|&")) {
         cmd = new PipeCommand(cmd_line);
@@ -420,6 +424,9 @@ void ExternalCommand::execute() {
         execv(argv[0], argv);
         perror("smash error: execv failed");
     } else { // parent
+        if(this->getArgs()[0] == "timeout"){
+            sm.getTimeOutList()->addTimeOutEntry(this->getCmdLine().c_str(), p,stoi(this->getArgs()[1]));
+        }
         //bg
         if(is_background){
             //cout << "I'm bg, job pid " << getpid() << endl;
@@ -557,6 +564,9 @@ void KillCommand::execute() {
                 break;
             case SIGCONT:
                 job->setStopped(false);
+                /*if(!job->getBackground()){
+                    smash.getJobList()->addJob(job->getCmdLine(), job->getJobPid(), smash.getFgJobID());
+                }*/
                 break;
             case SIGKILL:
                 job_list->removeJobByPID(job->getJobPid());
@@ -975,5 +985,66 @@ void CatCommand::execute() {
 
         // continue to next file
         file_ptr++;
+    }
+}
+
+TimeOutCommand::TimeOutCommand(const char* cmd_line) : Command(cmd_line) {}
+
+TimeOutCommand::~TimeOutCommand() {}
+
+char* parsedInnerCommand(const char* cmd_line) {
+    char cmd_str[COMMAND_ARGS_MAX_LENGTH];
+
+    strcpy(cmd_str, cmd_line);
+
+    char* parsed_cmd = strsep(&cmd_str, ' ');
+    parsed_cmd = strsep(&cmd_str, ' ');
+
+    return parsed_cmd;
+}
+
+void TimeOutCommand::execute() {
+    SmallShell &smash = SmallShell::getInstance();
+
+    string inner_cmd_str = parsedInnerCommand(this->getCmdLine().c_str());
+
+    Command *inner_cmd = smash.CreateCommand(inner_cmd_str.c_str());
+
+    inner_cmd->execute();
+
+    delete inner_cmd;
+}
+
+
+TimeOutList::TimeOutEntry::TimeOutEntry(const char* cmd_line, int pid, long int duration) : cmd_line(cmd_line), pid(pid) {
+    kill_time = duration + static_cast<long int>(time(nullptr));
+    long int time_to_signal = kill_time - time(nullptr);
+    alarm(time_to_signal);
+}
+
+TimeOutList::TimeOutEntry::~TimeOutEntry() {}
+
+TimeOutList::TimeOutList() {
+    this->time_out_entry_list = new std::list<TimeOutEntry*>({});
+}
+
+TimeOutList::~TimeOutList() {
+    delete [] time_out_entry_list;
+}
+
+void TimeOutList::addTimeOutEntry(const char* cmd_line, int pid, long int kill_time){
+    TimeOutEntry *time_out_entry = new TimeOutList::TimeOutEntry(const char* cmd_line, pid, kill_time);
+    this->time_out_entry_list->push_back(time_out_entry);
+}
+
+void TimeOutList::removeTimeOutEntry(int pid) {
+    if(time_out_entry_list->empty()) return;
+    std::list<TimeOutEntry*>::iterator entry = time_out_entry_list->begin();
+    while(entry != time_out_entry_list->end()) {
+        if((*entry)->pid == pid){
+            time_out_entry_list->remove(*entry);
+            delete *entry;
+            break;
+        }
     }
 }

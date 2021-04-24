@@ -14,6 +14,14 @@ int main(int argc, char* argv[]) {
     }
 
     //TODO: setup sig alarm handler
+    struct sigaction sa;
+    memset(&sa, 0, sizeof(sa));
+    sa.sa_flags = SA_RESTART;
+    sa.sa_handler = alarmHandler;
+
+    if (sigaction(SIGALRM, &sa, nullptr)) {
+        perror("smash error: failed to set alarm handler");
+    }
 
     SmallShell& smash = SmallShell::getInstance();
     while(true) {

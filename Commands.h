@@ -255,11 +255,41 @@ class CatCommand : public BuiltInCommand {
   void execute() override;
 };
 
+class TimeOutList{
+public:
+    class TimeOutEntry{
+    public:
+        int pid = -1;
+        long int kill_time;
+        const char* cmd_line;
+
+        TimeOutEntry(const char* cmd_line, int pid, long int duration);
+        ~TimeOutEntry();
+    };
+
+    std::list<TimeOutEntry*> *time_out_entry_list;
+
+    TimeOutList();
+    ~TimeOutList();
+
+    void addTimeOutEntry(const char* cmd_line, int pid, long int kill_time);
+
+    void removeTimeOutEntry(int pid);
+
+};
+
+class TimeOutCommand : public Command {
+public:
+    TimeOutCommand(const char* cmd_line);
+    ~TimeOutCommand();
+    void execute() override;
+};
 
 class SmallShell {
  private:
   // TODO: Add your data members
   JobsList *job_list;
+  TimeOutList *timeout_list;
   std::string prompt_name = "smash";
   int smashPID;
   int fg_job_pid = -1;
@@ -311,6 +341,11 @@ class SmallShell {
   JobsList* getJobList(){
       return job_list;
   }
+
+  TimeOutList* getTimeOutList(){
+      return timeout_list;
+  }
+
   std::string getLastDir(){
       return this->plastPwd;
   }
