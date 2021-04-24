@@ -105,13 +105,28 @@ bool sortJobEntries(JobsList::JobEntry *job1, JobsList::JobEntry *job2){
     return job1->getJobId() < job2->getJobId();
 }
 
-void JobsList::addJob(Command *cmd, bool isStopped, int pid) {
+void JobsList::addJob(Command *cmd, bool isStopped, int pid, int job_id) {
     int jobId;
     bool is_background;
+
     if(job_entry_list->empty()) jobId = 0;
-    else {
+
+    // in case the job is added for the first time
+    else if(job_id == -1) {
         JobsList::getLastJob(&jobId);
     }
+
+    else {
+        JobEntry *jobEntry = JobsList::getJobById(job_id);
+
+        // meaning the index in the job id is free and we can give the continued job it's old index
+        if(jobEntry == nullptr){
+            jobId = job_id;
+        } else { // someone has already occupied this index, set new index to max_job_id +1
+            JobsList::getLastJob(&jobId);
+        }
+    }
+
     is_background = _isBackgroundComamnd(cmd->getCmdLine().c_str());
     JobEntry *job_entry = new JobsList::JobEntry(cmd->getCmdLine(), jobId + 1, pid, isStopped, is_background);
     job_entry_list->push_back(job_entry);
@@ -538,10 +553,57 @@ void KillCommand::execute() {
         case SIGSTOP:
             job->setStopped(true);
             break;
+        case SIGTTIN:
+            job->setStopped(true);
+            break;
+        case SIGTTOU:
+            job->setStopped(true);
+            break;
         case SIGCONT:
             job->setStopped(false);
+            break;
         case SIGKILL:
 			job_list->removeJobByPID(job->getJobPid());
+            break;
+        case SIALRM:
+            job_list->removeJobByPID(job->getJobPid());
+            break;
+        case SIGEMT:
+            job_list->removeJobByPID(job->getJobPid());
+            break;
+        case SIGHUP:
+            job_list->removeJobByPID(job->getJobPid());
+            break;
+        case SIGIO:
+            job_list->removeJobByPID(job->getJobPid());
+            break;
+        case SIGKILL:
+            job_list->removeJobByPID(job->getJobPid());
+            break;
+        case SIGLOST:
+            job_list->removeJobByPID(job->getJobPid());
+            break;
+        case SIGPIPE:
+            job_list->removeJobByPID(job->getJobPid());
+            break;
+        case SIGPOLL:
+            job_list->removeJobByPID(job->getJobPid());
+            break;
+        case SIGPORF:
+            job_list->removeJobByPID(job->getJobPid());
+            break;
+        case SIGPWR:
+            job_list->removeJobByPID(job->getJobPid());
+            break;
+        case SIGSKFLT:
+            job_list->removeJobByPID(job->getJobPid());
+            break;
+        case SIGTERM:
+            job_list->removeJobByPID(job->getJobPid());
+            break;
+        case SIGVTALRM:
+            job_list->removeJobByPID(job->getJobPid());
+            break;
     }
 }
 
@@ -596,6 +658,7 @@ void ForegroundCommand::execute() {
     }
     
     smash.getJobList()->removeJobByPID(job->getJobPid());
+
 	
 	//cout << "done waiting" << endl;
 

@@ -6,7 +6,7 @@
 #include <list>
 
 #define COMMAND_ARGS_MAX_LENGTH (200)
-#define COMMAND_MAX_ARGS (20)
+#define COMMAND_MAX_ARGS (30) // just in case 20 doesn't include the cmd name
 
 class Command {
 // TODO: Add your data members
@@ -18,8 +18,6 @@ class Command {
   Command(const char* cmd_line);
   virtual ~Command();
   virtual void execute() = 0;
-  //virtual void prepare();
-  //virtual void cleanup();
   // TODO: Add your extra methods if needed
 
   void delete_args();
@@ -93,12 +91,6 @@ public:
   ChangeDirCommand(const char* cmd_line);
   virtual ~ChangeDirCommand() {}
   void execute() override;
-  /*std::string getLastDir(){
-      return this->plastPwd;
-  }
-  void setLastDir(std::string new_path){
-      this->plastPwd = new_path;
-  }*/
 };
 
 class GetCurrDirCommand : public BuiltInCommand {
@@ -186,7 +178,6 @@ class JobsList {
       bool operator!=(const JobEntry& jb) {
           return !(*this == jb);
       }
-
   };
  // TODO: Add your data members
 
@@ -196,7 +187,7 @@ class JobsList {
  public:
   JobsList();
   ~JobsList();
-  void addJob(Command* cmd, bool isStopped = false, int pid = -1);
+  void addJob(Command* cmd, bool isStopped = false, int pid = -1, int job_id = -1);
   void printJobsList();
   void killAllJobs();
   void removeFinishedJobs();
