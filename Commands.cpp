@@ -640,6 +640,8 @@ void ForegroundCommand::execute() {
 	//cout << "done waiting" << endl;
 
     smash.setFgJobPID(-1);
+
+    smash.setFgJobID(-1);
 	
 	//cout << "fg job pid was reset" << endl;
 }
