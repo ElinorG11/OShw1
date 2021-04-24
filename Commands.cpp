@@ -638,6 +638,9 @@ void ForegroundCommand::execute() {
     job->setStopped(false);
 
     smash.setFgJobPID(job->getJobPid());
+
+    // mark job as FG so in case it is continued it wont be added again to the job list and retain it's old index
+    smash.setFgJobID(job_id);
 	
 	//cout << "new smash pid: " << smash.getFgJobPID() << endl;
 
@@ -648,8 +651,6 @@ void ForegroundCommand::execute() {
 	
 	//cout << "kill signal SIGCONT sent" << endl;
 
-    
-	
 	//cout << "removed job successfully" << endl;
 
     if(waitpid(job->getJobPid(),NULL,0 | WUNTRACED) < 0){
@@ -658,6 +659,7 @@ void ForegroundCommand::execute() {
     }
     
     smash.getJobList()->removeJobByPID(job->getJobPid());
+
 
 	
 	//cout << "done waiting" << endl;

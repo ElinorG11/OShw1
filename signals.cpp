@@ -8,6 +8,14 @@ using namespace std;
 void ctrlZHandler(int sig_num) {
 	// TODO: Add your implementation
     cout << "smash: got ctrl-Z" << endl << flush;
+    SmallShell &smash = SmallShell::getInstance();
+
+    /* if we stop a resumed job (which was once on the job list) we need to use it's old job_id
+     * which is stored in smash.getFgJobID(). case id == -1 it's a new job. case id != -1
+     * addJob function will use it's old id. If the old Id is taken, it will set its index to max_index + 1
+     */
+    // smash.getJobList()->addJob(job->getCmdLine(), job->getPid(), smash.getFgJobID());
+
 }
 
 void ctrlCHandler(int sig_num) {

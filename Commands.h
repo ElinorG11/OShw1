@@ -171,6 +171,10 @@ class JobsList {
           this->isBackgroundJob = status;
       }
 
+      bool getBackground() const {
+          return this->isBackgroundJob;
+      }
+
       bool operator==(const JobsList::JobEntry& job) {
           return this->getJobId() == job.job_id;
       }
@@ -259,6 +263,7 @@ class SmallShell {
   std::string prompt_name = "smash";
   int smashPID;
   int fg_job_pid = -1;
+    int fg_job_id = -1;
   std::string plastPwd;
   SmallShell();
  public:
@@ -293,6 +298,14 @@ class SmallShell {
 
   void setFgJobPID(int id){
       fg_job_pid = id;
+  }
+
+  int getFgJobID() const {
+      return fg_job_id;
+  }
+
+  void setFgJobID(int id){
+      fg_job_id = id;
   }
 
   JobsList* getJobList(){
