@@ -831,6 +831,11 @@ void PipeCommand::execute() {
 
 }
 
+
+/**
+ * Redirection command constructor
+ * @param cmd_line
+ */
 RedirectionCommand::RedirectionCommand(const char *cmd_line) : Command(cmd_line) {
     char cmd_str[COMMAND_ARGS_MAX_LENGTH];
     strcpy(cmd_str, cmd_line);
@@ -838,29 +843,52 @@ RedirectionCommand::RedirectionCommand(const char *cmd_line) : Command(cmd_line)
     char *command_name;
     char *file_name = cmd_str;
 
-    command_name = strsep(&file_name, ">");
+//  check the type of redirection (input/output and append/override)
+    if(command_name = strsep(&file_name, ">")) {
+        if (file_name && *file_name == '>') {
+            ++file_name;
+            operation = ">>";
+        } else {
+            operation = ">";
+        }
 
-    if (file_name && *file_name == '>') {
-        ++file_name;
-        operation = ">>";
-    } else {
-        operation = ">";
+    } else if(command_name = strsep(&file_name, "<")){
+        if (file_name && *file_name == '<') {
+            ++file_name;
+            operation = "<<";
+        } else {
+            operation = "<";
+        }
+    }
+    else{
+        cout << 'There is a problem with redirection' << endl;
     }
 
+//  save file name
     std::istringstream iss(_trim(string(file_name)).c_str());
     iss >> output_file;
 
+//  create the command to be redirected
     SmallShell &sm = SmallShell::getInstance();
-
     cmd = sm.CreateCommand(command_name);
+
+
 }
 
+/**
+ *  Redirection command destructor
+ */
+// what is the no except for?
 RedirectionCommand::~RedirectionCommand() noexcept {
     delete cmd;
 }
 
+/**
+ * Redirection execute command
+ */
 void RedirectionCommand::execute() {
-    cout << "dummy exec" << endl;
+
+
 }
 
 CatCommand::CatCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {}
