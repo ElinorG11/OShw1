@@ -9,9 +9,11 @@
 int main(int argc, char* argv[]) {
     if(signal(SIGTSTP , ctrlZHandler)==SIG_ERR) {
         perror("smash error: failed to set ctrl-Z handler");
+        return 1;
     }
     if(signal(SIGINT , ctrlCHandler)==SIG_ERR) {
         perror("smash error: failed to set ctrl-C handler");
+        return 1;
     }
 
     //TODO: setup sig alarm handler
@@ -22,6 +24,7 @@ int main(int argc, char* argv[]) {
 
     if (sigaction(SIGALRM, &sa, nullptr)) {
         perror("smash error: failed to set alarm handler");
+        return 1;
     }
 
     SmallShell& smash = SmallShell::getInstance();

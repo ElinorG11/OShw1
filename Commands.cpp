@@ -12,7 +12,9 @@
 #include <iostream>
 #include <fstream>
 #include <math.h>
-#include <ctime>
+#include <time.h>
+#include <unistd.h>
+#include <signal.h>
 #include "Commands.h"
 
 using namespace std;
@@ -90,9 +92,7 @@ void _removeBackgroundSign(char* cmd_line) {
 // TODO: Add your implementation for classes in Commands.h
 
 JobsList::JobEntry::JobEntry(string cmd_line, int jobId, int pid, bool isStopped, bool is_background) : cmd_line(cmd_line), job_id(jobId),
-                            pid(pid), isStopped(isStopped), isBackgroundJob(is_background), time_added(time(nullptr)) {
-								cout << time_added << endl;
-								}
+                            pid(pid), isStopped(isStopped), isBackgroundJob(is_background), time_added(time(nullptr)) {}
 
 JobsList::JobsList()  {
     this->job_entry_list = new std::list<JobEntry*>({});
@@ -154,7 +154,10 @@ void JobsList::killAllJobs() {
     std::list<JobEntry*>::iterator job_iterator = job_entry_list->begin();
     while(job_iterator != job_entry_list->end()){
         cout << (*job_iterator)->getJobPid() << ": " << (*job_iterator)->getCmdLine() << endl;
-        if(kill((*job_iterator)->getJobPid(),SIGKILL) == -1) perror("smash error: kill failed");
+        if(kill((*job_iterator)->getJobPid(),SIGKILL) == -1) {
+            perror("smash error: kill failed");
+            return;
+        }
         job_iterator++;
     }
 }
@@ -416,13 +419,16 @@ void ExternalCommand::execute() {
     //cout << p << endl;
     if (p < 0) {
         perror("smash error: fork failed");
+        return;
     }
     else if (p == 0) { // son
         //cout << "calling bash, C ya! pid child " << getpid() << " father pid " << getppid() << endl;
         setpgrp();
         char* argv[] = {(char*)"/bin/bash", (char*)"-c", cmd_str, NULL};
-        execv(argv[0], argv);
-        perror("smash error: execv failed");
+        if(execv(argv[0], argv) < 0) {
+            perror("smash error: execv failed");
+            exit(1);
+        }
     } else { // parent
         if(this->getArgs()[0] == "timeout"){
             sm.getTimeOutList()->addTimeOutEntry(this->getCmdLine().c_str(), p,stoi(this->getArgs()[1]));
@@ -472,7 +478,10 @@ GetCurrDirCommand::GetCurrDirCommand(const char *cmd_line) : BuiltInCommand(cmd_
 
 void GetCurrDirCommand::execute() {
     char cwd[PATH_MAX];
-    getcwd(cwd, sizeof(cwd));
+    if(getcwd(cwd, sizeof(cwd)) == nullptr){
+        perror("smash error: getcwd failed");
+        return;
+    }
     cout << cwd << endl;
 }
 
@@ -481,14 +490,17 @@ ChangeDirCommand::ChangeDirCommand(const char *cmd_line) : BuiltInCommand(cmd_li
 
 void ChangeDirCommand::execute() {
     char cwd[PATH_MAX], path[PATH_MAX];
-    getcwd(cwd, sizeof(cwd));
+    if(getcwd(cwd, sizeof(cwd)) == nullptr){
+        perror("smash error: getcwd failed");
+        return;
+    }
 
     if (this->getNumArgs() > 2) {
-        cout << "smash error: cd: too many arguments" << endl;
+        cerr << "smash error: cd: too many arguments" << endl;
         return;
     }
     if (this->getNumArgs() == 2 && strcmp(this->getArgs()[1], "-") == 0 && this->smash.getLastDir().empty()) {
-        cout << "smash error: cd: OLDPWD not set" << endl;
+        cerr << "smash error: cd: OLDPWD not set" << endl;
         return;
     }
 
@@ -529,7 +541,7 @@ bool checkNumber(string str) {
 
 void KillCommand::execute() {
     if(this->getNumArgs() > 1 && !checkNumber(string(this->getArgs()[2]))){
-        cout << "smash error: kill: job-id " << this->getArgs()[2] << " does not exist" << endl;
+        cerr << "smash error: kill: job-id " << this->getArgs()[2] << " does not exist" << endl;
     }
 
     if(this->getNumArgs() == 3 &&  this->getArgs()[1][0] == '-' && checkNumber(string(this->getArgs()[1] + 1))) {
@@ -543,7 +555,7 @@ void KillCommand::execute() {
         JobsList::JobEntry *job = job_list->getJobById(job_id);
 
         if (job == nullptr) {
-            cout << "smash error: kill: job-id " << job_id << " does not exist" << endl;
+            cerr << "smash error: kill: job-id " << job_id << " does not exist" << endl;
             return;
         }
 
@@ -571,9 +583,48 @@ void KillCommand::execute() {
             case SIGKILL:
                 job_list->removeJobByPID(job->getJobPid());
                 break;
+            case SIGALRM:
+                job_list->removeJobByPID(job->getJobPid());
+                break;
+            //case SIGEMT:
+            //    job_list->removeJobByPID(job->getJobPid());
+             //   break;
+            case SIGHUP:
+                job_list->removeJobByPID(job->getJobPid());
+                break;
+            case SIGIO:
+                job_list->removeJobByPID(job->getJobPid());
+                break;
+            //case SIGLOST: // declared unused by manpage
+                //job_list->removeJobByPID(job->getJobPid());
+                //break;
+            case SIGPIPE:
+                job_list->removeJobByPID(job->getJobPid());
+                break;
+            case SIGPROF:
+                job_list->removeJobByPID(job->getJobPid());
+                break;
+            case SIGPWR:
+                job_list->removeJobByPID(job->getJobPid());
+                break;
+            case SIGSTKFLT:
+                job_list->removeJobByPID(job->getJobPid());
+                break;
+            case SIGTERM:
+                job_list->removeJobByPID(job->getJobPid());
+                break;
+            case SIGVTALRM:
+                job_list->removeJobByPID(job->getJobPid());
+                break;
+            case SIGTTIN:
+                job->setStopped(true);
+                break;
+            case SIGTTOU:
+                job->setStopped(true);
+                break;
         }
     } else {
-        cout << "smash error: kill: invalid arguments" << endl;
+        cerr << "smash error: kill: invalid arguments" << endl;
         return;
     }
 }
@@ -584,12 +635,12 @@ void ForegroundCommand::execute() {
 
     if(((this->getNumArgs() == 2) && (string(this->getArgs()[1]).substr(0,1) == "-")) || (this->getNumArgs() == 2 &&
         !checkNumber(string(this->getArgs()[1]))) || (smash.getJobList()->isEmpty() && this->getNumArgs() == 2)) {
-        cout << "smash error: fg: job-id " << this->getArgs()[1] << " does not exist" << endl;
+        cerr << "smash error: fg: job-id " << this->getArgs()[1] << " does not exist" << endl;
         return;
     }
 
     if(smash.getJobList()->isEmpty()){
-        cout << "smash error: fg: jobs list is empty" << endl;
+        cerr << "smash error: fg: jobs list is empty" << endl;
         return;
     }
 
@@ -601,13 +652,13 @@ void ForegroundCommand::execute() {
         job_id = atoi(this->getArgs()[1]);
         job = smash.getJobList()->getJobById(job_id);
         if (job == nullptr) {
-            cout << "smash error: fg: job-id " << job_id << " does not exist" << endl;
+            cerr << "smash error: fg: job-id " << job_id << " does not exist" << endl;
             return;
         }
     }
 
     if (this->getNumArgs() > 2 || (this->getNumArgs() == 2 && !checkNumber(string(this->getArgs()[1])))) {
-        cout << "smash error: fg: invalid arguments" << endl;
+        cerr << "smash error: fg: invalid arguments" << endl;
         return;
     }
 
@@ -627,7 +678,7 @@ void ForegroundCommand::execute() {
 
 	if(kill(job->getJobPid(),SIGCONT) < 0){
         perror("smash error: kill failed");
-        exit(1);
+        return;
     }
 	
 	//cout << "kill signal SIGCONT sent" << endl;
@@ -636,7 +687,7 @@ void ForegroundCommand::execute() {
 
     if(waitpid(job->getJobPid(),NULL,0 | WUNTRACED) < 0){
         perror("smash error: waitpid failed");
-        exit(1);
+        return;
     }
     
     smash.getJobList()->removeJobByPID(job->getJobPid());
@@ -656,7 +707,7 @@ void BackgroundCommand::execute() {
 
     if(((this->getNumArgs() == 2) && (string(this->getArgs()[1]).substr(0,1) == "-")) || (this->getNumArgs() == 2 &&
         !checkNumber(string(this->getArgs()[1]))) || (smash.getJobList()->isEmpty() && this->getNumArgs() == 2)) {
-        cout << "smash error: fg: job-id " << this->getArgs()[1] << " does not exist" << endl;
+        cerr << "smash error: fg: job-id " << this->getArgs()[1] << " does not exist" << endl;
         return;
     }
 
@@ -667,20 +718,20 @@ void BackgroundCommand::execute() {
         job_id = atoi(this->getArgs()[1]);
         job = smash.getJobList()->getJobById(job_id);
         if (job == nullptr) {
-            cout << "smash error: bg: job-id " << job_id << " does not exist" << endl;
+            cerr << "smash error: bg: job-id " << job_id << " does not exist" << endl;
             return;
         } else if (!job->isJobStopped()) {
-            cout << "smash error: bg: job-id " << job_id << " is already running in the background" << endl;
+            cerr << "smash error: bg: job-id " << job_id << " is already running in the background" << endl;
             return;
         }
     } else if (this->getNumArgs() == 1) {
         job = smash.getJobList()->getLastStoppedJob(&job_id);
         if (job == nullptr) {
-            cout << "smash error: bg: there is no stopped jobs to resume" << endl;
+            cerr << "smash error: bg: there is no stopped jobs to resume" << endl;
             return;
         }
     } else {
-        cout << "smash error: bg: invalid arguments" << endl;
+        cerr << "smash error: bg: invalid arguments" << endl;
         return;
     }
 
@@ -692,7 +743,7 @@ void BackgroundCommand::execute() {
 
     if(kill(job->getJobPid(),SIGCONT)==-1){
         perror("smash error: kill failed");
-        exit(1);
+        return;
     }
 }
 
@@ -899,8 +950,8 @@ void RedirectionCommand::execute() {
     int channel = 1;
     int temp_fd = dup(channel);
     if(temp_fd == -1){
-            perror("smash error: dup failed");
-            exit(1);
+        perror("smash error: dup failed");
+        return;
     }
 
 
@@ -913,13 +964,13 @@ void RedirectionCommand::execute() {
         int fd = open(this->output_file.c_str(),O_WRONLY | O_CREAT, S_IWUSR);
         if(fd == -1){
             perror("smash error: open failed");
-            exit(1);
+            return;
         }
 
 //      redirect stdout to the output file
         if(dup2(fd, channel) == -1){
             perror("smash error: dup2 failed");
-            exit(1);
+            return;
         }
 //      execute the command with redirected output
         this->cmd->execute();
@@ -927,25 +978,25 @@ void RedirectionCommand::execute() {
 //      change the stdout to its original file
         if(dup2(temp_fd, channel) == -1){
             perror("smash error: dup2 failed");
-            exit(1);
+            return;
         }
 
 //      close unnecessary fd's
         if(close(fd) == -1 || close(temp_fd) == -1){
             perror("smash error: close failed");
-            exit(1);
+            return;
         }
     } else{
 //      open output file in append
         int fd = open(this->output_file.c_str(),O_WRONLY | O_CREAT | O_APPEND, S_IWUSR);
         if(fd == -1){
             perror("smash error: open failed");
-            exit(1);
+            return;
         }
 //      redirect stdout to the output file
         if(dup2(fd, channel) == -1){
             perror("smash error: dup2 failed");
-            exit(1);
+            return;
         }
 //      execute the command with redirected output
         this->cmd->execute();
@@ -953,13 +1004,13 @@ void RedirectionCommand::execute() {
 //      change the stdout to its original file
         if(dup2(temp_fd, channel) == -1){
             perror("smash error: dup2 failed");
-            exit(1);
+            return;
         }
 
 //      close unnecessary fd's
         if(close(fd) == -1 || close(temp_fd) == -1){
             perror("smash error: close failed");
-            exit(1);
+            return;
         }
     }
 
@@ -969,7 +1020,7 @@ CatCommand::CatCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {}
 
 void CatCommand::execute() {
     if (this->getNumArgs() < 2) {
-        cout << "smash error: cat: not enough arguments" << endl;
+        cerr << "smash error: cat: not enough arguments" << endl;
         return;
     }
 
@@ -1036,7 +1087,7 @@ void CatCommand::execute() {
             return;
         }
 
-        delete buffer;
+        delete[] buffer;
 
         // close
         int clos_res = close(fd);

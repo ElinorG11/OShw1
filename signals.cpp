@@ -24,7 +24,7 @@ void ctrlZHandler(int sig_num) {
             int pid = smash.getJobList()->getJobById(fgJobId)->getJobPid();
             if(kill(pid, SIGSTOP) == -1){
                 perror("smash error: kill failed");
-                exit(1); // do we need to exit(1)?
+                return;
             }
             smash.getJobList()->removeJobById(fgJobId);
             smash.setFgJobID(-1);
@@ -44,8 +44,8 @@ void ctrlCHandler(int sig_num) {
     if (smash.getJobList()->getJobByPID(pid) != nullptr) {
         int fg_job_id = smash.getJobList()->getJobByPID(pid)->getJobId();
         if(kill(pid, sig_num) < 0) {
-				perror("smash error: kill failed");
-                exit(1);
+            perror("smash error: kill failed");
+            return;
 		}
         smash.setFgJobPID(-1);
         cout << "smash: process " << pid << " was killed" << endl << flush;
@@ -63,7 +63,7 @@ void alarmHandler(int sig_num) {
             int pid = (*timeout_it)->pid;
             if(kill(pid, sig_num) < 0) {
                 perror("smash error: kill failed");
-                exit(1);
+                return;
             }
             cout << "smash: " << (*timeout_it)->cmd_line << " timed out!" << endl;
             smash.getTimeOutList()->removeTimeOutEntry(pid);
