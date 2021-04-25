@@ -585,10 +585,12 @@ void ForegroundCommand::execute() {
     if(((this->getNumArgs() == 2) && (string(this->getArgs()[1]).substr(0,1) == "-")) || (this->getNumArgs() == 2 &&
         !checkNumber(string(this->getArgs()[1]))) || (smash.getJobList()->isEmpty() && this->getNumArgs() == 2)) {
         cout << "smash error: fg: job-id " << this->getArgs()[1] << " does not exist" << endl;
+        return;
     }
 
     if(smash.getJobList()->isEmpty()){
         cout << "smash error: fg: jobs list is empty" << endl;
+        return;
     }
 
     int job_id;
@@ -625,7 +627,7 @@ void ForegroundCommand::execute() {
 
 	if(kill(job->getJobPid(),SIGCONT) < 0){
         perror("smash error: kill failed");
-        return;
+        exit(1);
     }
 	
 	//cout << "kill signal SIGCONT sent" << endl;
@@ -634,7 +636,7 @@ void ForegroundCommand::execute() {
 
     if(waitpid(job->getJobPid(),NULL,0 | WUNTRACED) < 0){
         perror("smash error: waitpid failed");
-        return;
+        exit(1);
     }
     
     smash.getJobList()->removeJobByPID(job->getJobPid());
@@ -655,6 +657,7 @@ void BackgroundCommand::execute() {
     if(((this->getNumArgs() == 2) && (string(this->getArgs()[1]).substr(0,1) == "-")) || (this->getNumArgs() == 2 &&
         !checkNumber(string(this->getArgs()[1]))) || (smash.getJobList()->isEmpty() && this->getNumArgs() == 2)) {
         cout << "smash error: fg: job-id " << this->getArgs()[1] << " does not exist" << endl;
+        return;
     }
 
     int job_id;
@@ -689,7 +692,7 @@ void BackgroundCommand::execute() {
 
     if(kill(job->getJobPid(),SIGCONT)==-1){
         perror("smash error: kill failed");
-        return;
+        exit(1);
     }
 }
 
@@ -994,11 +997,15 @@ TimeOutCommand::~TimeOutCommand() {}
 
 char* parsedInnerCommand(const char* cmd_line) {
     char cmd_str[COMMAND_ARGS_MAX_LENGTH];
-
     strcpy(cmd_str, cmd_line);
 
-    char* parsed_cmd = strsep(&cmd_str, ' ');
-    parsed_cmd = strsep(&cmd_str, ' ');
+	char* parsed_cmd;
+    char* parsed_cmd_1;
+    char* parsed_cmd_2 = cmd_str;
+
+    parsed_cmd_1 = strsep(&parsed_cmd_2, " ");
+    parsed_cmd = parsed_cmd_2;
+    parsed_cmd_1 = strsep(&parsed_cmd, " ");
 
     return parsed_cmd;
 }
@@ -1029,11 +1036,16 @@ TimeOutList::TimeOutList() {
 }
 
 TimeOutList::~TimeOutList() {
-    delete [] time_out_entry_list;
+
+    for(auto j : *time_out_entry_list){
+        delete j;
+    }
+
+    delete time_out_entry_list;
 }
 
 void TimeOutList::addTimeOutEntry(const char* cmd_line, int pid, long int kill_time){
-    TimeOutEntry *time_out_entry = new TimeOutList::TimeOutEntry(const char* cmd_line, pid, kill_time);
+    TimeOutEntry *time_out_entry = new TimeOutList::TimeOutEntry(cmd_line, pid, kill_time);
     this->time_out_entry_list->push_back(time_out_entry);
 }
 

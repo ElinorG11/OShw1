@@ -60,12 +60,14 @@ void alarmHandler(int sig_num) {
     std::list<TimeOutList::TimeOutEntry*>::iterator timeout_it = timeout_list->begin();
     while (timeout_it != timeout_list->end()){
         if(difftime((*timeout_it)->kill_time,time(nullptr)) >= 0){
-            if(kill((*timeout_it)->pid, sig_num) < 0) {
+            int pid = (*timeout_it)->pid;
+            if(kill(pid, sig_num) < 0) {
                 perror("smash error: kill failed");
                 exit(1);
             }
             cout << "smash: " << (*timeout_it)->cmd_line << " timed out!" << endl;
-            smash.getTimeOutList()->removeTimeOutEntry((*timeout_it)->pid);
+            smash.getTimeOutList()->removeTimeOutEntry(pid);
+            smash.getJobList()->removeJobByPID(pid);
         }
     }
 }

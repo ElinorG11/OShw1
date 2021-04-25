@@ -2,6 +2,7 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include <signal.h>
+#include <cstring>
 #include "Commands.h"
 #include "signals.h"
 
