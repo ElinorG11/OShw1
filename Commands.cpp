@@ -852,8 +852,10 @@ RedirectionCommand::RedirectionCommand(const char *cmd_line) : Command(cmd_line)
 
     char *command_name;
     char *file_name = cmd_str;
+//  redirection is not allowed to run in bg
+    _removeBackgroundSign(file_name);
 
-//  check the type of redirection (input/output and append/override)
+//  check the type of redirection (append/override)
     if(command_name = strsep(&file_name, ">")) {
         if (file_name && *file_name == '>') {
             ++file_name;
@@ -861,22 +863,15 @@ RedirectionCommand::RedirectionCommand(const char *cmd_line) : Command(cmd_line)
         } else {
             operation = ">";
         }
-
-    } else if(command_name = strsep(&file_name, "<")){
-        if (file_name && *file_name == '<') {
-            ++file_name;
-            operation = "<<";
-        } else {
-            operation = "<";
-        }
-    }
-    else{
+    } else{
         cout << 'There is a problem with redirection' << endl;
     }
+
 
 //  save file name
     std::istringstream iss(_trim(string(file_name)).c_str());
     iss >> output_file;
+
 
 //  create the command to be redirected
     SmallShell &sm = SmallShell::getInstance();
@@ -897,7 +892,73 @@ RedirectionCommand::~RedirectionCommand() noexcept {
  * Redirection execute command
  */
 void RedirectionCommand::execute() {
+// set the channel to output
+    int channel = 1;
+    int temp_fd = dup(channel);
+    if(temp_fd == -1){
+            perror("smash error: dup failed");
+            exit(1);
+    }
 
+
+//  redirection commands are always fg (ignore &) so we need to set it as fg command
+    SmallShell &sm = SmallShell::getInstance();
+    sm.setFgJobPID(getpid());
+
+    if(this->operation == ">"){
+//      open output file in overwrite
+        int fd = open(this->output_file.c_str(),O_WRONLY | O_CREAT, S_IWUSR);
+        if(fd == -1){
+            perror("smash error: open failed");
+            exit(1);
+        }
+
+//      redirect stdout to the output file
+        if(dup2(fd, channel) == -1){
+            perror("smash error: dup2 failed");
+            exit(1);
+        }
+//      execute the command with redirected output
+        this->cmd->execute();
+
+//      change the stdout to its original file
+        if(dup2(temp_fd, channel) == -1){
+            perror("smash error: dup2 failed");
+            exit(1);
+        }
+
+//      close unnecessary fd's
+        if(close(fd) == -1 || close(temp_fd) == -1){
+            perror("smash error: close failed");
+            exit(1);
+        }
+    } else{
+//      open output file in append
+        int fd = open(this->output_file.c_str(),O_WRONLY | O_CREAT | O_APPEND, S_IWUSR);
+        if(fd == -1){
+            perror("smash error: open failed");
+            exit(1);
+        }
+//      redirect stdout to the output file
+        if(dup2(fd, channel) == -1){
+            perror("smash error: dup2 failed");
+            exit(1);
+        }
+//      execute the command with redirected output
+        this->cmd->execute();
+
+//      change the stdout to its original file
+        if(dup2(temp_fd, channel) == -1){
+            perror("smash error: dup2 failed");
+            exit(1);
+        }
+
+//      close unnecessary fd's
+        if(close(fd) == -1 || close(temp_fd) == -1){
+            perror("smash error: close failed");
+            exit(1);
+        }
+    }
 
 }
 
