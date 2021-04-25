@@ -26,7 +26,7 @@ void ctrlZHandler(int sig_num) {
                 perror("smash error: kill failed");
                 return;
             }
-            smash.getJobList()->removeJobById(fgJobId);
+            smash.getJobList()->getJobById(fgJobId)->setStopped(true);
             smash.setFgJobID(-1);
             smash.setFgJobPID(-1);
             cout << "smash: process " << pid << " was stopped" << endl << flush;
@@ -41,13 +41,20 @@ void ctrlCHandler(int sig_num) {
     cout << "smash: got ctrl-C" << endl << flush;
     SmallShell &smash = SmallShell::getInstance();
     int pid = smash.getFgJobPID();
-    if (smash.getJobList()->getJobByPID(pid) != nullptr) {
-        int fg_job_id = smash.getJobList()->getJobByPID(pid)->getJobId();
-        if(kill(pid, sig_num) < 0) {
+    if (pid != -1) {
+        if(kill(pid, SIGKILL) < 0) {
             perror("smash error: kill failed");
             return;
-		}
+        }
+        if(!smash.getJobList()->isEmpty()){
+            JobsList::JobEntry *jobEntry = smash.getJobList()->getJobById(smash.getFgJobID());
+            if(jobEntry != nullptr){
+                jobEntry->setStopped(true);
+                smash.getJobList()->removeJobById(smash.getFgJobID());
+            }
+        }
         smash.setFgJobPID(-1);
+        smash.setFgJobID(-1);
         cout << "smash: process " << pid << " was killed" << endl << flush;
     }
 }
