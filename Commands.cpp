@@ -140,9 +140,11 @@ void JobsList::printJobsList() {
         else {
             addend = " secs";
         }
-        cout << "current time: " << time(nullptr) << endl;
-        cout << "[" << (*job_iterator)->getJobId() << "] " << (*job_iterator)->getCmdLine() << " : " << (*job_iterator)->getJobPid() <<
-             difftime(time(nullptr) ,(*job_iterator)->getStartTime()) << addend << endl;
+        //cout << "current time: " << time(nullptr) << " " << (*job_iterator)->getStartTime()<< endl;
+        //int diff = static_cast<long int>(time(nullptr)) - static_cast<long int>((*job_iterator)->getStartTime());
+        cout << "[" << (*job_iterator)->getJobId() << "] " << (*job_iterator)->getCmdLine() << " : " << (*job_iterator)->getJobPid() << " " << difftime(static_cast<long int>(time(nullptr)) ,static_cast<long int>((*job_iterator)->getStartTime()))
+              << addend << endl;
+        //
         job_iterator++;
     }
 }
@@ -430,8 +432,8 @@ void ExternalCommand::execute() {
             exit(1);
         }
     } else { // parent
-        if(this->getArgs()[0] == "timeout"){
-            sm.getTimeOutList()->addTimeOutEntry(this->getCmdLine().c_str(), p,stoi(this->getArgs()[1]));
+        if(this->isTimeOutCmd()){
+            sm.getTimeOutList()->addTimeOutEntry(this->getCmdLine().c_str(), p,this->getKillTime());
         }
         //bg
         if(is_background){
@@ -684,13 +686,17 @@ void ForegroundCommand::execute() {
 	//cout << "kill signal SIGCONT sent" << endl;
 
 	//cout << "removed job successfully" << endl;
-
+	int *wstatus;
     if(waitpid(job->getJobPid(),NULL,0 | WUNTRACED) < 0){
         perror("smash error: waitpid failed");
         return;
     }
     
-    smash.getJobList()->removeJobByPID(job->getJobPid());
+    if(!job->isJobStopped()) {
+		//job->setStopped(false);
+		smash.getJobList()->removeJobByPID(job->getJobPid());
+	}
+   
 
 	//cout << "done waiting" << endl;
 
@@ -707,7 +713,7 @@ void BackgroundCommand::execute() {
 
     if(((this->getNumArgs() == 2) && (string(this->getArgs()[1]).substr(0,1) == "-")) || (this->getNumArgs() == 2 &&
         !checkNumber(string(this->getArgs()[1]))) || (smash.getJobList()->isEmpty() && this->getNumArgs() == 2)) {
-        cerr << "smash error: fg: job-id " << this->getArgs()[1] << " does not exist" << endl;
+        cerr << "smash error: bg: job-id " << this->getArgs()[1] << " does not exist" << endl;
         return;
     }
 
@@ -1123,11 +1129,18 @@ char* parsedInnerCommand(const char* cmd_line) {
 }
 
 void TimeOutCommand::execute() {
+    if(this->getNumArgs() < 3 || !checkNumber(this->getArgs()[1])){
+        return;
+    }
     SmallShell &smash = SmallShell::getInstance();
 
     string inner_cmd_str = parsedInnerCommand(this->getCmdLine().c_str());
 
     Command *inner_cmd = smash.CreateCommand(inner_cmd_str.c_str());
+
+    (*inner_cmd).setTimeOutCmd(true);
+
+    (*inner_cmd).setKillTime(stoi(this->getArgs()[1]));
 
     inner_cmd->execute();
 
@@ -1137,8 +1150,10 @@ void TimeOutCommand::execute() {
 
 TimeOutList::TimeOutEntry::TimeOutEntry(const char* cmd_line, int pid, long int duration) : cmd_line(cmd_line), pid(pid) {
     kill_time = duration + static_cast<long int>(time(nullptr));
-    long int time_to_signal = kill_time - time(nullptr);
-    alarm(time_to_signal);
+    //long int time_to_signal = kill_time - static_cast<long int>(time(nullptr));
+    //cout << "time " << static_cast<long int>(time(nullptr)) << " kill time: " << kill_time << endl;
+    //cout << " time to signal: " << time_to_signal << endl;
+    alarm(duration);
 }
 
 TimeOutList::TimeOutEntry::~TimeOutEntry() {}
@@ -1163,12 +1178,17 @@ void TimeOutList::addTimeOutEntry(const char* cmd_line, int pid, long int kill_t
 
 void TimeOutList::removeTimeOutEntry(int pid) {
     if(time_out_entry_list->empty()) return;
-    std::list<TimeOutEntry*>::iterator entry = time_out_entry_list->begin();
+    //std::list<TimeOutEntry*>::iterator entry = time_out_entry_list->begin();
+    auto entry = time_out_entry_list->begin();
+    //cout << " time 1" << endl;
     while(entry != time_out_entry_list->end()) {
+        //cout << " time 2" << endl;
         if((*entry)->pid == pid){
+            //cout << " time 3" << endl;
             time_out_entry_list->remove(*entry);
             delete *entry;
             break;
         }
     }
+    //cout << " time 4" << endl;
 }

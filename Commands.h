@@ -13,7 +13,9 @@ class Command {
   std::string cmd_line;
   char **args;
   int args_count;
+  bool isTimeOut = false;
   bool isBackground = false;
+  long int kill_time;
  public:
   Command(const char* cmd_line);
   virtual ~Command();
@@ -23,7 +25,7 @@ class Command {
   void delete_args();
 
   std::string getCmdLine(){
-      return cmd_line.c_str();
+      return cmd_line;
   }
 
   void setCmdLine(std::string cmd_line){
@@ -39,6 +41,22 @@ class Command {
   }
 
   bool isBuiltin();
+
+  bool isTimeOutCmd() {
+      return isTimeOut;
+  }
+
+  void setTimeOutCmd(bool status) {
+      this->isTimeOut = status;
+  }
+
+  long int getKillTime() {
+      return kill_time;
+  }
+
+  void setKillTime(long int set_time) {
+      this->kill_time = set_time;
+  }
 };
 
 class SmallShell;
@@ -261,7 +279,7 @@ public:
     public:
         int pid = -1;
         long int kill_time;
-        const char* cmd_line;
+        std::string cmd_line;
 
         TimeOutEntry(const char* cmd_line, int pid, long int duration);
         ~TimeOutEntry();
@@ -349,6 +367,7 @@ class SmallShell {
   std::string getLastDir(){
       return this->plastPwd;
   }
+
   void setLastDir(std::string new_path){
       this->plastPwd = new_path;
   }
