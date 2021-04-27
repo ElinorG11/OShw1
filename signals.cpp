@@ -22,8 +22,12 @@ void ctrlZHandler(int sig_num) {
 
     if (smash.getFgJobPID() != -1) {
         int fgJobId = smash.getFgJobID();
-        if(smash.getJobList()->getJobById(fgJobId) != nullptr){
-            int pid = smash.getJobList()->getJobById(fgJobId)->getJobPid();
+        JobsList::JobEntry *jobEntry = smash.getJobList()->getJobById(fgJobId);
+        if(jobEntry != nullptr){
+            int pid = jobEntry->getJobPid();
+            if(!jobEntry->getBackground() && !jobEntry->isJobStopped()){
+				jobEntry->resetTimer();
+			}
             if(kill(pid, SIGSTOP) == -1){
                 perror("smash error: kill failed");
                 return;
@@ -83,7 +87,7 @@ void alarmHandler(int sig_num) {
             //cout << "fuck4" << endl;
             int pid = (*timeout_it)->pid;
             //cout << "sgnal pid " << pid << endl;
-            res = waitpid(pid, nullptr, WNOHANG); // in case e.g. timeout 5 sleep 1& dont print cmd_line. check if process already finished
+            res = waitpid(pid, nullptr, WNOHANG);
             //cout << " res " << res << endl;
             if(res == 0){ // child didnt finish yet
                 //if(counter == length) break;

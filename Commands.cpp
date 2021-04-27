@@ -667,6 +667,7 @@ void ForegroundCommand::execute() {
     cout << job->getCmdLine() << " : " << job->getJobPid() << endl;
 
     job->setStopped(false);
+    job->setBackground(false);
 
     smash.setFgJobPID(job->getJobPid());
 

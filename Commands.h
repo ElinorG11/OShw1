@@ -200,6 +200,9 @@ class JobsList {
       bool operator!=(const JobEntry& jb) {
           return !(*this == jb);
       }
+      void resetTimer(){
+		this->time_added = time(nullptr);  
+	  }
   };
  // TODO: Add your data members
 
