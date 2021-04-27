@@ -968,7 +968,7 @@ void RedirectionCommand::execute() {
 
     if(this->operation == ">"){
 //      open output file in overwrite
-        int fd = open(this->output_file.c_str(),O_WRONLY | O_CREAT, S_IWUSR);
+        int fd = open(this->output_file.c_str(),O_WRONLY | O_CREAT, S_IRWXO);
         if(fd == -1){
             perror("smash error: open failed");
             return;
@@ -995,7 +995,7 @@ void RedirectionCommand::execute() {
         }
     } else{
 //      open output file in append
-        int fd = open(this->output_file.c_str(),O_WRONLY | O_CREAT | O_APPEND, S_IWUSR);
+        int fd = open(this->output_file.c_str(),O_WRONLY | O_CREAT | O_APPEND, S_IRWXO);
         if(fd == -1){
             perror("smash error: open failed");
             return;
@@ -1020,7 +1020,7 @@ void RedirectionCommand::execute() {
             return;
         }
     }
-
+    sm.setFgJobPID(-1);
 }
 
 CatCommand::CatCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {}
