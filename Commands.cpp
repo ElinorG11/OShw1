@@ -89,8 +89,6 @@ void _removeBackgroundSign(char* cmd_line) {
   cmd_line[str.find_last_not_of(WHITESPACE, idx) + 1] = 0;
 }
 
-// TODO: Add your implementation for classes in Commands.h
-
 JobsList::JobEntry::JobEntry(string cmd_line, int jobId, int pid, bool isStopped, bool is_background) : cmd_line(cmd_line), job_id(jobId),
                             pid(pid), isStopped(isStopped), isBackgroundJob(is_background), time_added(time(nullptr)) {}
 
@@ -140,17 +138,13 @@ void JobsList::printJobsList() {
         else {
             addend = " secs";
         }
-        //cout << "current time: " << time(nullptr) << " " << (*job_iterator)->getStartTime()<< endl;
-        //int diff = static_cast<long int>(time(nullptr)) - static_cast<long int>((*job_iterator)->getStartTime());
-        cout << "[" << (*job_iterator)->getJobId() << "] " << (*job_iterator)->getCmdLine() << " : " << (*job_iterator)->getJobPid() << " " << difftime(static_cast<long int>(time(nullptr)) ,static_cast<long int>((*job_iterator)->getStartTime()))
-              << addend << endl;
-        //
+        cout << "[" << (*job_iterator)->getJobId() << "] " << (*job_iterator)->getCmdLine() << " : " << (*job_iterator)->getJobPid() << " " <<
+        difftime(static_cast<long int>(time(nullptr)) ,static_cast<long int>((*job_iterator)->getStartTime())) << addend << endl;
         job_iterator++;
     }
 }
 
 void JobsList::killAllJobs() {
-    //if(job_entry_list->empty()) return;
     JobsList::removeFinishedJobs();
     cout << "smash: sending SIGKILL signal to " << job_entry_list->size() << " jobs:" << endl;
     std::list<JobEntry*>::iterator job_iterator = job_entry_list->begin();
@@ -166,26 +160,18 @@ void JobsList::killAllJobs() {
 
 void JobsList::removeJobByPID(int pid){
     if(job_entry_list->empty()) return;
-    //cout << "list not empty" << endl;
     JobEntry *temp = getJobByPID(pid);
-    //cout << "got job by pid" << pid << endl;
     if(temp == nullptr) return;
     job_entry_list->remove(temp);
-    //cout << "removed job" << endl;
     delete temp;
-    //cout << "job deleted successfully" << endl;
 }
 
 void JobsList::removeFinishedJobs(){
     if(job_entry_list->empty()) return;
-    pid_t res = waitpid(-1, nullptr, WNOHANG);
-    //cout << "first res" << res << endl;
+    int res = waitpid(-1, nullptr, WNOHANG);
     while (res > 0){
-        //cout << "removing finished jobs, still hasnt crushed" << endl;
         removeJobByPID(res);
-        //cout << "passed remove job by pid" << endl;
         res = waitpid(-1, nullptr, WNOHANG);
-        //cout << "res now is" << res << endl;
     }
 }
 
@@ -242,31 +228,22 @@ JobsList::JobEntry * JobsList::getLastStoppedJob(int *jobId) {
 
 JobsList::JobEntry * JobsList::getJobByPID(int job_pid) {
     if(job_entry_list->empty()) return nullptr;
-    //cout << "inside get job by pid - list not empty" << endl;
     std::list<JobEntry*>::iterator jobs_iterator = job_entry_list->begin();
-    //cout << "got job iterator" << endl;
     while (jobs_iterator != job_entry_list->end()){
-        //cout << "searching for job by pid inside while" << endl;
         if((*jobs_iterator)->getJobPid() == job_pid) {
-            //cout << "found job, job pid: "<< endl;
             return (*jobs_iterator);
         }
         jobs_iterator++;
     }
-    //cout << "found no job, returning null" << endl;
     return nullptr;
 }
 
 SmallShell::SmallShell() : smashPID(getpid()) {
-    // TODO: add your implementation
-
     this->job_list = new JobsList();
     this->timeout_list = new TimeOutList();
 }
 
 SmallShell::~SmallShell() {
-    // TODO: add your implementation
-
     delete job_list;
     delete timeout_list;
 }
@@ -326,7 +303,6 @@ Command * SmallShell::CreateCommand(const char* cmd_line) {
     } else if (firstWord == "cat") {
         cmd = new CatCommand(cmd_line);
     } else {
-        //cout << "this is an external command!" << endl;
         cmd = new ExternalCommand(cmd_line);
     }
 
@@ -334,45 +310,18 @@ Command * SmallShell::CreateCommand(const char* cmd_line) {
 
     return cmd;
 
-	// For example:
-/*
-  string cmd_s = _trim(string(cmd_line));
-  string firstWord = cmd_s.substr(0, cmd_s.find_first_of(" \n"));
-
-  if (firstWord.compare("pwd") == 0) {
-    return new GetCurrDirCommand(cmd_line);
-  }
-  else if (firstWord.compare("showpid") == 0) {
-    return new ShowPidCommand(cmd_line);
-  }
-  else if ...
-  .....
-  else {
-    return new ExternalCommand(cmd_line);
-  }
-  */
   return nullptr;
 }
 
 void SmallShell::executeCommand(const char *cmd_line) {
-  // TODO: Add your implementation here
-
-  //cout << "in SM::exec" << endl;
   this->job_list->removeFinishedJobs();
-  //cout << "removed jobs from job list b4 executing anothe command";
   Command* cmd = CreateCommand(cmd_line);
   if(cmd != nullptr) {
-      //cout << "executing: " << cmd->getCmdLine() << endl;
-      cmd->execute();
-      //cout << "done executing" << endl;
-      delete cmd;
-      //cout << "delete successful" << endl;
-  }
 
-  // for example:
-  // Command* cmd = CreateCommand(cmd_line);
-  // cmd->execute();
-  // Please note that you must fork smash process for some commands (e.g., external commands....)
+      cmd->execute();
+
+      delete cmd;
+  }
 }
 
 Command::Command(const char* cmd_line) : args(new char *[COMMAND_MAX_ARGS]) {
@@ -403,7 +352,6 @@ ExternalCommand::ExternalCommand(const char *cmd_line) : Command(cmd_line) {}
 
 void ExternalCommand::execute() {
     bool is_background = _isBackgroundComamnd(this->getCmdLine().c_str());
-    //if(is_background) cout << "this is background command "  << this->getCmdLine() << endl;
 
     SmallShell &sm = SmallShell::getInstance();
 
@@ -413,18 +361,14 @@ void ExternalCommand::execute() {
 
     if(is_background) _removeBackgroundSign(cmd_str);
 
-    //cout << "command w.o bg sign " << cmd_str << endl;
-
-    // TODO: try updating job-list b4 forking
-
     int p = fork();
-    //cout << p << endl;
+
     if (p < 0) {
         perror("smash error: fork failed");
         return;
     }
     else if (p == 0) { // son
-        //cout << "calling bash, C ya! pid child " << getpid() << " father pid " << getppid() << endl;
+
         setpgrp();
         char* argv[] = {(char*)"/bin/bash", (char*)"-c", cmd_str, NULL};
         if(execv(argv[0], argv) < 0) {
@@ -437,21 +381,18 @@ void ExternalCommand::execute() {
         }
         //bg
         if(is_background){
-            //cout << "I'm bg, job pid " << getpid() << endl;
             sm.getJobList()->addJob(this, false, p);
-            //cout << "I was added to the job list" << endl;
+
         } else { // is foreground
             sm.setFgJobPID(p);
-            //cout << "job pid " << sm.getFgJobPID() << " child pid " << p << " father pid " << getpid() << endl;
+
             waitpid(p,NULL,0 | WUNTRACED);
+
             sm.setFgJobPID(-1);
-            //cout << "done waiting, bye!" << endl;
         }
     }
 
     delete[] cmd_str;
-
-    //cout << "delete was successful" << endl;
 }
 
 /*
@@ -473,7 +414,7 @@ void ChpromptCommand::execute() {
 ShowPidCommand::ShowPidCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {}
 
 void ShowPidCommand::execute() {
-    cout << "smash pid is: " << smash.getSmashId() << endl;
+    cout << "smash pid is " << smash.getSmashId() << endl;
 }
 
 GetCurrDirCommand::GetCurrDirCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {}
@@ -542,8 +483,14 @@ bool checkNumber(string str) {
 }
 
 void KillCommand::execute() {
-    if(this->getNumArgs() > 1 && !checkNumber(string(this->getArgs()[2]))){
+	if(this->getNumArgs() == 3 && this->getArgs()[2][0] == '-'){
         cerr << "smash error: kill: job-id " << this->getArgs()[2] << " does not exist" << endl;
+        return;
+    }
+    
+    if(this->getNumArgs() == 3 && !checkNumber(string(this->getArgs()[2]))){
+        cerr << "smash error: kill: invalid arguments" << endl;
+        return;
     }
 
     if(this->getNumArgs() == 3 &&  this->getArgs()[1][0] == '-' && checkNumber(string(this->getArgs()[1] + 1))) {
@@ -563,8 +510,7 @@ void KillCommand::execute() {
 
         string pid;
         pid += std::to_string(job->getJobPid());
-        pid += ":";
-        pid += job->getCmdLine();
+       
         if (kill(job->getJobPid(), signal_number) < 0) {
             perror("smash error: kill failed");
             return;
@@ -578,9 +524,6 @@ void KillCommand::execute() {
                 break;
             case SIGCONT:
                 job->setStopped(false);
-                /*if(!job->getBackground()){
-                    smash.getJobList()->addJob(job->getCmdLine(), job->getJobPid(), smash.getFgJobID());
-                }*/
                 break;
             case SIGKILL:
                 job_list->removeJobByPID(job->getJobPid());
@@ -625,8 +568,11 @@ void KillCommand::execute() {
                 job->setStopped(true);
                 break;
         }
-    } else {
+    } else if(this->getNumArgs() != 3 ||  this->getArgs()[1][0] != '-' || !checkNumber(string(this->getArgs()[1] + 1))) {
         cerr << "smash error: kill: invalid arguments" << endl;
+        return;
+    } else {
+		cerr << "smash error: kill: invalid arguments" << endl;
         return;
     }
 }
@@ -635,14 +581,23 @@ ForegroundCommand::ForegroundCommand(const char *cmd_line) : BuiltInCommand(cmd_
 
 void ForegroundCommand::execute() {
 
-    if(((this->getNumArgs() == 2) && (string(this->getArgs()[1]).substr(0,1) == "-")) || (this->getNumArgs() == 2 &&
-        !checkNumber(string(this->getArgs()[1]))) || (smash.getJobList()->isEmpty() && this->getNumArgs() == 2)) {
+    if(smash.getJobList()->isEmpty() && this->getNumArgs() == 2 && checkNumber(string(this->getArgs()[1]))) {
+        cerr << "smash error: fg: job-id " << this->getArgs()[1] << " does not exist" << endl;
+        return;
+    }
+    
+    if(this->getNumArgs() == 2 && this->getArgs()[1][0] == '-') {
         cerr << "smash error: fg: job-id " << this->getArgs()[1] << " does not exist" << endl;
         return;
     }
 
-    if(smash.getJobList()->isEmpty()){
+    if(smash.getJobList()->isEmpty() && this->getNumArgs() == 1){
         cerr << "smash error: fg: jobs list is empty" << endl;
+        return;
+    }
+    
+    if (this->getNumArgs() > 2 || (this->getNumArgs() == 2 && !checkNumber(string(this->getArgs()[1])))) {
+        cerr << "smash error: fg: invalid arguments" << endl;
         return;
     }
 
@@ -658,11 +613,7 @@ void ForegroundCommand::execute() {
             return;
         }
     }
-
-    if (this->getNumArgs() > 2 || (this->getNumArgs() == 2 && !checkNumber(string(this->getArgs()[1])))) {
-        cerr << "smash error: fg: invalid arguments" << endl;
-        return;
-    }
+    
 
     cout << job->getCmdLine() << " : " << job->getJobPid() << endl;
 
@@ -673,9 +624,6 @@ void ForegroundCommand::execute() {
 
     // mark job as FG so in case it is continued it wont be added again to the job list and retain it's old index
     smash.setFgJobID(job_id);
-	
-	//cout << "new smash pid: " << smash.getFgJobPID() << endl;
-
 
 	//DO_SYS(kill(job->getJobPid(),SIGCONT));
 
@@ -683,10 +631,7 @@ void ForegroundCommand::execute() {
         perror("smash error: kill failed");
         return;
     }
-	
-	//cout << "kill signal SIGCONT sent" << endl;
 
-	//cout << "removed job successfully" << endl;
 	int *wstatus;
     if(waitpid(job->getJobPid(),NULL,0 | WUNTRACED) < 0){
         perror("smash error: waitpid failed");
@@ -694,26 +639,28 @@ void ForegroundCommand::execute() {
     }
     
     if(!job->isJobStopped()) {
-		//job->setStopped(false);
 		smash.getJobList()->removeJobByPID(job->getJobPid());
 	}
-   
-
-	//cout << "done waiting" << endl;
 
     smash.setFgJobPID(-1);
 
     smash.setFgJobID(-1);
-	
-	//cout << "fg job pid was reset" << endl;
 }
 
 BackgroundCommand::BackgroundCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {}
 
 void BackgroundCommand::execute() {
+	if((this->getNumArgs() == 2) && (string(this->getArgs()[1]).substr(0,1) == "-")) {
+        cerr << "smash error: bg: job-id " << this->getArgs()[1] << " does not exist" << endl;
+        return;
+    }
 
-    if(((this->getNumArgs() == 2) && (string(this->getArgs()[1]).substr(0,1) == "-")) || (this->getNumArgs() == 2 &&
-        !checkNumber(string(this->getArgs()[1]))) || (smash.getJobList()->isEmpty() && this->getNumArgs() == 2)) {
+    if(this->getNumArgs() == 2 && !checkNumber(string(this->getArgs()[1]))) {
+        cerr << "smash error: bg: invalid arguments" << endl;
+        return;
+    }
+    
+    if(smash.getJobList()->isEmpty() && this->getNumArgs() == 2 && checkNumber(string(this->getArgs()[1]))) {
         cerr << "smash error: bg: job-id " << this->getArgs()[1] << " does not exist" << endl;
         return;
     }
@@ -819,7 +766,7 @@ enum {
  */
 void PipeCommand::execute() {
 // what is this for?
-    cout << this->operation << endl;
+    //cout << this->operation << endl;
 
 //  chooses the right FD according to the pipe command (stdout or stderr)
     int channel = (this->operation == "|") ? 1 : 2; // stdout = 1, stderr = 2
@@ -830,34 +777,34 @@ void PipeCommand::execute() {
     pid_t pid1, pid2;
 
 // what is this for?
-    cout << "fd[1] " << fd[1] << " fd[0] " << fd[0] << endl;
+    //cout << "fd[1] " << fd[1] << " fd[0] " << fd[0] << endl;
 
 // pipe commands are always fg (ignore &) so need to set it as fg command
     SmallShell &sm = SmallShell::getInstance();
     sm.setFgJobPID(getpid());
 
 // what is this for?
-    cout << "pid " << getpid() << endl;
+    //cout << "pid " << getpid() << endl;
     /* Instructor's answer from piazza: two ways for pipe implementation
      * 1. either redirect IO for builtin commands but don't forget to redirect it back (so smash will function properly)
      * 2. you may fork builtin commands
      * */
-    cout << "cmd1 is " << cmd1->getCmdLine() << endl;
-    cout << "cmd1 is builtin " << cmd1->isBuiltin() << endl;
+    //cout << "cmd1 is " << cmd1->getCmdLine() << endl;
+    //cout << "cmd1 is builtin " << cmd1->isBuiltin() << endl;
 
-    cout << "cmd2 is " << cmd2->getCmdLine() << endl;
-    cout << "cmd2 is builtin " << cmd2->isBuiltin() << endl;
+    //cout << "cmd2 is " << cmd2->getCmdLine() << endl;
+    //cout << "cmd2 is builtin " << cmd2->isBuiltin() << endl;
 
 
 // runs  cmd1 with redirection of output if cmd1 is external
     if (!cmd1->isBuiltin()) {
-        cout << "cmd1 is " << cmd1->getCmdLine() << endl;
+        //cout << "cmd1 is " << cmd1->getCmdLine() << endl;
         pid1 = fork();
         if (pid1 < 0) {
             perror("smash error: fork failed");
             return;
         } else if (pid1 == 0) { // child
-            cout << "redirection In child " << getpid() << endl;
+            //cout << "redirection In child " << getpid() << endl;
             // no need for setpgrp - we want the child to recieve our signals (?)
             dup2(fd[WT], channel);
             // now stdout/stderr point to same file object as fd[WT]. we can close both pipe channels
@@ -871,21 +818,21 @@ void PipeCommand::execute() {
 
 
 // runs cmd2 with redirection of input
-    cout << "in father  " << getpid() << endl;
+    //cout << "in father  " << getpid() << endl;
     // even if both commands are builtin commands, need to fork since they can't run together in the same smash
     pid2 = fork();
     if (pid2 < 0) {
         perror("smash error: fork failed");
         return;
     } else if (pid2 == 0) {
-        cout << "redirection child 2 cmd2 is " << cmd2->getCmdLine() << " pid is " << getpid() << endl;
+        //cout << "redirection child 2 cmd2 is " << cmd2->getCmdLine() << " pid is " << getpid() << endl;
         dup2(fd[RD], 0);
         close(fd[RD]);
         close(fd[WT]);
         cmd2->execute();
         exit(0);
     } else if (cmd1->isBuiltin()) {
-        cout << "cmd1 is builtin " << cmd1->getCmdLine() << " pid " << getpid() << endl;
+        //cout << "cmd1 is builtin " << cmd1->getCmdLine() << " pid " << getpid() << endl;
         int temp = dup(channel);
         dup2(fd[WT], channel);
         close(fd[RD]);
@@ -893,7 +840,7 @@ void PipeCommand::execute() {
         cmd1->execute();
         dup2(temp, channel);
     }
-    cout << "finished, in father pid " << getpid() << endl;
+    //cout << "finished, in father pid " << getpid() << endl;
     close(fd[RD]);
     close(fd[WT]);
     waitpid(pid2, NULL, 0);
@@ -925,7 +872,7 @@ RedirectionCommand::RedirectionCommand(const char *cmd_line) : Command(cmd_line)
             operation = ">";
         }
     } else{
-        cout << 'There is a problem with redirection' << endl;
+        cout << 'There is a problem with redirection' << endl; // what is it? no errors were specified in the pdf, in any case, errors are printed to cerr. should return?
     }
 
 
@@ -944,8 +891,7 @@ RedirectionCommand::RedirectionCommand(const char *cmd_line) : Command(cmd_line)
 /**
  *  Redirection command destructor
  */
-// what is the no except for?
-RedirectionCommand::~RedirectionCommand() noexcept {
+RedirectionCommand::~RedirectionCommand() {
     delete cmd;
 }
 
@@ -1151,9 +1097,6 @@ void TimeOutCommand::execute() {
 
 TimeOutList::TimeOutEntry::TimeOutEntry(const char* cmd_line, int pid, long int duration) : cmd_line(cmd_line), pid(pid) {
     kill_time = duration + static_cast<long int>(time(nullptr));
-    //long int time_to_signal = kill_time - static_cast<long int>(time(nullptr));
-    //cout << "time " << static_cast<long int>(time(nullptr)) << " kill time: " << kill_time << endl;
-    //cout << " time to signal: " << time_to_signal << endl;
     alarm(duration);
 }
 
@@ -1179,17 +1122,12 @@ void TimeOutList::addTimeOutEntry(const char* cmd_line, int pid, long int kill_t
 
 void TimeOutList::removeTimeOutEntry(int pid) {
     if(time_out_entry_list->empty()) return;
-    //std::list<TimeOutEntry*>::iterator entry = time_out_entry_list->begin();
     auto entry = time_out_entry_list->begin();
-    //cout << " time 1" << endl;
     while(entry != time_out_entry_list->end()) {
-        //cout << " time 2" << endl;
         if((*entry)->pid == pid){
-            //cout << " time 3" << endl;
             time_out_entry_list->remove(*entry);
             delete *entry;
             break;
         }
     }
-    //cout << " time 4" << endl;
 }

@@ -9,16 +9,8 @@
 using namespace std;
 
 void ctrlZHandler(int sig_num) {
-	// TODO: Add your implementation
     cout << "smash: got ctrl-Z" << endl << flush;
     SmallShell &smash = SmallShell::getInstance();
-
-    /* if we stop a resumed job (which was once on the job list) we need to use it's old job_id
-     * which is stored in smash.getFgJobID(). case id == -1 it's a new job. case id != -1
-     * addJob function will use it's old id. If the old Id is taken, it will set its index to max_index + 1
-     */
-    // smash.getJobList()->addJob(job->getCmdLine(), job->getPid(), smash.getFgJobID());
-    // smash.setFgJobID(-1)
 
     if (smash.getFgJobPID() != -1) {
         int fgJobId = smash.getFgJobID();
@@ -37,13 +29,11 @@ void ctrlZHandler(int sig_num) {
             smash.setFgJobPID(-1);
             cout << "smash: process " << pid << " was stopped" << endl << flush;
         }
-
     }
     return;
 }
 
 void ctrlCHandler(int sig_num) {
-    // TODO: Add your implementation
     cout << "smash: got ctrl-C" << endl << flush;
     SmallShell &smash = SmallShell::getInstance();
     int pid = smash.getFgJobPID();
@@ -65,7 +55,6 @@ void ctrlCHandler(int sig_num) {
 }
 
 void alarmHandler(int sig_num) {
-  // TODO: Add your implementation
     cout << "smash: got an alarm" << endl;
     SmallShell &smash = SmallShell::getInstance();
     std::list<TimeOutList::TimeOutEntry*> *timeout_list = smash.getTimeOutList()->time_out_entry_list;
@@ -73,37 +62,23 @@ void alarmHandler(int sig_num) {
     int length = timeout_list->size();
     int counter = 0;
     int res;
-    //cout << "fuck list size " << timeout_list->size() << endl;
     std::list<TimeOutList::TimeOutEntry*>::iterator timeout_it = timeout_list->begin();
-    //auto timeout_it = timeout_list->begin();
-    //cout << "fuck2" << endl;
     while (counter < length){
         counter++;
-        //cout << "fuck3" << endl;
-        //cout << "fun 9000 " << *timeout_it << " end " << *timeout_list->end() << endl;
-        //cout << "not the problem" << endl;
-        //cout << (*timeout_it)->kill_time << " tim e " << time(nullptr) << endl;
         if(difftime((*timeout_it)->kill_time,time(nullptr)) >= 0){
-            //cout << "fuck4" << endl;
             int pid = (*timeout_it)->pid;
-            //cout << "sgnal pid " << pid << endl;
             res = waitpid(pid, nullptr, WNOHANG);
-            //cout << " res " << res << endl;
             if(res == 0){ // child didnt finish yet
-                //if(counter == length) break;
                 if(kill(pid, sig_num) < 0) {
                     perror("smash error: kill failed");
                     return;
                 }
                 cout << "smash: " << (*timeout_it)->cmd_line << " timed out!" << endl;
-                //cout << "fuck5" << endl;
-                smash.getJobList()->removeJobByPID(pid);
-                //cout << "fuck6" << endl;
             }
             smash.getTimeOutList()->removeTimeOutEntry(pid);
+            smash.getJobList()->removeJobByPID(pid);
         }
         timeout_it++;
-        //cout << "fuck7" << endl;
     }
     return;
 }
