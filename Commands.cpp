@@ -802,6 +802,7 @@ void PipeCommand::execute() {
         pid1 = fork();
         if (pid1 < 0) {
             perror("smash error: fork failed");
+            sm.setFgJobPID(-1);
             return;
         } else if (pid1 == 0) { // child
             //cout << "redirection In child " << getpid() << endl;
@@ -823,6 +824,7 @@ void PipeCommand::execute() {
     pid2 = fork();
     if (pid2 < 0) {
         perror("smash error: fork failed");
+        sm.setFgJobPID(-1);
         return;
     } else if (pid2 == 0) {
         //cout << "redirection child 2 cmd2 is " << cmd2->getCmdLine() << " pid is " << getpid() << endl;
@@ -914,41 +916,49 @@ void RedirectionCommand::execute() {
 
     if(this->operation == ">"){
 //      open output file in overwrite
-        int fd = open(this->output_file.c_str(),O_WRONLY | O_CREAT, S_IRWXO);
+        int fd = open(this->output_file.c_str(),O_RDWR|O_CREAT,  S_IRWXO|S_IRWXU|S_IRWXG);
+        cout <<  'fd is: '  << std::to_string(channel) << endl;
         if(fd == -1){
             perror("smash error: open failed");
+            sm.setFgJobPID(-1);
             return;
         }
 
 //      redirect stdout to the output file
         if(dup2(fd, channel) == -1){
             perror("smash error: dup2 failed");
+            sm.setFgJobPID(-1);
             return;
         }
 //      execute the command with redirected output
+
         this->cmd->execute();
 
 //      change the stdout to its original file
         if(dup2(temp_fd, channel) == -1){
             perror("smash error: dup2 failed");
+            sm.setFgJobPID(-1);
             return;
         }
 
 //      close unnecessary fd's
         if(close(fd) == -1 || close(temp_fd) == -1){
             perror("smash error: close failed");
+            sm.setFgJobPID(-1);
             return;
         }
     } else{
 //      open output file in append
-        int fd = open(this->output_file.c_str(),O_WRONLY | O_CREAT | O_APPEND, S_IRWXO);
+        int fd = open(this->output_file.c_str(),O_RDWR | O_CREAT | O_APPEND,  S_IRWXO|S_IRWXU|S_IRWXG);
         if(fd == -1){
             perror("smash error: open failed");
+            sm.setFgJobPID(-1);
             return;
         }
 //      redirect stdout to the output file
         if(dup2(fd, channel) == -1){
             perror("smash error: dup2 failed");
+            sm.setFgJobPID(-1);
             return;
         }
 //      execute the command with redirected output
@@ -957,12 +967,14 @@ void RedirectionCommand::execute() {
 //      change the stdout to its original file
         if(dup2(temp_fd, channel) == -1){
             perror("smash error: dup2 failed");
+            sm.setFgJobPID(-1);
             return;
         }
 
 //      close unnecessary fd's
         if(close(fd) == -1 || close(temp_fd) == -1){
             perror("smash error: close failed");
+            sm.setFgJobPID(-1);
             return;
         }
     }
