@@ -144,6 +144,7 @@ void JobsList::printJobsList() {
     }
 }
 
+/* only quit uses this function - by the pdf no need to remove jobs from list */
 void JobsList::killAllJobs() {
     JobsList::removeFinishedJobs();
     cout << "smash: sending SIGKILL signal to " << job_entry_list->size() << " jobs:" << endl;
@@ -365,10 +366,10 @@ void ExternalCommand::execute() {
 
     if (p < 0) {
         perror("smash error: fork failed");
+        delete[] cmd_str;
         return;
     }
     else if (p == 0) { // son
-
         setpgrp();
         char* argv[] = {(char*)"/bin/bash", (char*)"-c", cmd_str, NULL};
         if(execv(argv[0], argv) < 0) {
@@ -617,27 +618,29 @@ void ForegroundCommand::execute() {
 
     cout << job->getCmdLine() << " : " << job->getJobPid() << endl;
 
+    //DO_SYS(kill(job->getJobPid(),SIGCONT));
+
+    if(kill(job->getJobPid(),SIGCONT) < 0){
+        perror("smash error: kill failed");
+        return;
+    }
+
     job->setStopped(false);
     job->setBackground(false);
 
     smash.setFgJobPID(job->getJobPid());
 
-    // mark job as FG so in case it is continued it wont be added again to the job list and retain it's old index
+    // mark job as FG
     smash.setFgJobID(job_id);
 
-	//DO_SYS(kill(job->getJobPid(),SIGCONT));
-
-	if(kill(job->getJobPid(),SIGCONT) < 0){
-        perror("smash error: kill failed");
-        return;
-    }
-
-	int *wstatus;
     if(waitpid(job->getJobPid(),NULL,0 | WUNTRACED) < 0){
         perror("smash error: waitpid failed");
+        smash.setFgJobPID(-1);
+        smash.setFgJobID(-1);
         return;
     }
-    
+
+    // check if stopped or finished
     if(!job->isJobStopped()) {
 		smash.getJobList()->removeJobByPID(job->getJobPid());
 	}
@@ -693,12 +696,12 @@ void BackgroundCommand::execute() {
 
     // DO_SYS(kill(job->getJobPid(),SIGCONT)); // macro to checks syscall integrity
 
-    job->setStopped(false);
-
     if(kill(job->getJobPid(),SIGCONT)==-1){
         perror("smash error: kill failed");
         return;
     }
+
+    job->setStopped(false);
 }
 
 QuitCommand::QuitCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {}
@@ -802,6 +805,7 @@ void PipeCommand::execute() {
         pid1 = fork();
         if (pid1 < 0) {
             perror("smash error: fork failed");
+            sm.setFgJobPID(-1);
             return;
         } else if (pid1 == 0) { // child
             //cout << "redirection In child " << getpid() << endl;
@@ -823,6 +827,7 @@ void PipeCommand::execute() {
     pid2 = fork();
     if (pid2 < 0) {
         perror("smash error: fork failed");
+        sm.setFgJobPID(-1);
         return;
     } else if (pid2 == 0) {
         //cout << "redirection child 2 cmd2 is " << cmd2->getCmdLine() << " pid is " << getpid() << endl;
@@ -977,6 +982,10 @@ void CatCommand::execute() {
         return;
     }
 
+    // cat command is always fg (ignore &) so need to set it as fg command
+    SmallShell &sm = SmallShell::getInstance();
+    sm.setFgJobPID(getpid());
+
     char **file_ptr = this->getArgs();
 
     // skip cmd name arg[0] = cat
@@ -994,6 +1003,7 @@ void CatCommand::execute() {
         // check open
         if (fd == -1) {
             perror("smash error: open failed");
+            sm.setFgJobPID(-1);
             return;
         }
 
@@ -1008,6 +1018,8 @@ void CatCommand::execute() {
         // read error
         if (read_res == -1) {
             perror("smash error: read failed");
+            sm.setFgJobPID(-1);
+            close(fd);
             return;
         }
 
@@ -1019,6 +1031,8 @@ void CatCommand::execute() {
             // write error
             if (write_res == -1) {
                 perror("smash error: write failed");
+                sm.setFgJobPID(-1);
+                close(fd);
                 return;
             }
 
@@ -1030,6 +1044,8 @@ void CatCommand::execute() {
             // read error
             if (read_res == -1) {
                 perror("smash error: read failed");
+                sm.setFgJobPID(-1);
+                close(fd);
                 return;
             }
         }
@@ -1037,6 +1053,8 @@ void CatCommand::execute() {
         // read error
         if (read_res == -1) {
             perror("smash error: read failed");
+            sm.setFgJobPID(-1);
+            close(fd);
             return;
         }
 
@@ -1048,12 +1066,14 @@ void CatCommand::execute() {
         // check close (?)
         if (clos_res == -1) {
             perror("smash error: close failed");
+            sm.setFgJobPID(-1);
             return;
         }
 
         // continue to next file
         file_ptr++;
     }
+    sm.setFgJobPID(-1);
 }
 
 TimeOutCommand::TimeOutCommand(const char* cmd_line) : Command(cmd_line) {}
