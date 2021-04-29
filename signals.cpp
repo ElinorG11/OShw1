@@ -17,13 +17,16 @@ void ctrlZHandler(int sig_num) {
         JobsList::JobEntry *jobEntry = smash.getJobList()->getJobById(fgJobId);
         if(jobEntry != nullptr){
             int pid = jobEntry->getJobPid();
-            if(!jobEntry->getBackground() && !jobEntry->isJobStopped()){
-				jobEntry->resetTimer();
-			}
+
             if(kill(pid, SIGSTOP) == -1){
                 perror("smash error: kill failed");
                 return;
             }
+
+            if(!jobEntry->getBackground() && !jobEntry->isJobStopped()){
+				jobEntry->resetTimer();
+			}
+
             smash.getJobList()->getJobByPID(pid)->setStopped(true);
             smash.setFgJobID(-1);
             smash.setFgJobPID(-1);
