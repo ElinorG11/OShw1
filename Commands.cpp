@@ -776,7 +776,10 @@ void PipeCommand::execute() {
 
 //  create the pipe
     int fd[2];
-    pipe(fd);
+    if(pipe(fd) == -1){
+        perror("smash error: pipe failed");
+        return;
+    }
     pid_t pid1, pid2;
 
 // what is this for?
@@ -810,10 +813,22 @@ void PipeCommand::execute() {
         } else if (pid1 == 0) { // child
             //cout << "redirection In child " << getpid() << endl;
             // no need for setpgrp - we want the child to recieve our signals (?)
-            dup2(fd[WT], channel);
+            if(dup2(fd[WT], channel) == -1){
+                perror("smash error: dup2 failed");
+                sm.setFgJobPID(-1);
+                return;
+            }
             // now stdout/stderr point to same file object as fd[WT]. we can close both pipe channels
-            close(fd[RD]);
-            close(fd[WT]);
+            if(close(fd[RD]) == -1){
+                perror("smash error: close failed");
+                sm.setFgJobPID(-1);
+                return;
+            }
+            if(close(fd[WT]) == -1){
+                perror("smash error: close failed");
+                sm.setFgJobPID(-1);
+                return;
+            }
             cmd1->execute();
             exit(0);
         }
@@ -831,24 +846,69 @@ void PipeCommand::execute() {
         return;
     } else if (pid2 == 0) {
         //cout << "redirection child 2 cmd2 is " << cmd2->getCmdLine() << " pid is " << getpid() << endl;
-        dup2(fd[RD], 0);
-        close(fd[RD]);
-        close(fd[WT]);
+        if(dup2(fd[RD], 0) == -1){
+            perror("smash error: dup2 failed");
+            sm.setFgJobPID(-1);
+            return;
+        }
+        if(close(fd[RD]) == -1){
+            perror("smash error: close failed");
+            sm.setFgJobPID(-1);
+            return;
+        }
+        if(close(fd[WT]) == -1){
+            perror("smash error: close failed");
+            sm.setFgJobPID(-1);
+            return;
+        }
         cmd2->execute();
         exit(0);
     } else if (cmd1->isBuiltin()) {
         //cout << "cmd1 is builtin " << cmd1->getCmdLine() << " pid " << getpid() << endl;
         int temp = dup(channel);
-        dup2(fd[WT], channel);
-        close(fd[RD]);
-        close(fd[WT]);
+        if(temp == -1){
+            perror("smash error: dup failed");
+            sm.setFgJobPID(-1);
+            return;
+        }
+        if(dup2(fd[WT], channel) == -1){
+            perror("smash error: dup2 failed");
+            sm.setFgJobPID(-1);
+            return;
+        }
+        if(close(fd[RD]) == -1){
+            perror("smash error: close failed");
+            sm.setFgJobPID(-1);
+            return;
+        }
+        if(close(fd[WT]) == -1){
+            perror("smash error: close failed");
+            sm.setFgJobPID(-1);
+            return;
+        }
         cmd1->execute();
-        dup2(temp, channel);
+        if(dup2(temp, channel) == -1){
+            perror("smash error: dup2 failed");
+            sm.setFgJobPID(-1);
+            return;
+        }
     }
     //cout << "finished, in father pid " << getpid() << endl;
-    close(fd[RD]);
-    close(fd[WT]);
-    waitpid(pid2, NULL, 0);
+    if(close(fd[RD]) == -1){
+        perror("smash error: close failed");
+        sm.setFgJobPID(-1);
+        return;
+    }
+    if(close(fd[WT]) == -1){
+        perror("smash error: close failed");
+        sm.setFgJobPID(-1);
+        return;
+    }
+    if(waitpid(pid2, NULL, 0) == -1){
+        perror("smash error: close failed");
+        sm.setFgJobPID(-1);
+        return;
+    }
 
     sm.setFgJobPID(-1);
 
