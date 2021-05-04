@@ -1007,7 +1007,7 @@ void RedirectionCommand::execute() {
 
     if(this->operation == ">"){
 //      open output file in overwrite
-        int fd = open(this->output_file.c_str(),O_RDWR|O_CREAT,  S_IRWXO|S_IRWXU|S_IRWXG);
+        int fd = open(this->output_file.c_str(),O_RDWR|O_CREAT|O_TRUNC,  S_IRWXO|S_IRWXU|S_IRWXG);
         if(fd == -1){
             perror("smash error: open failed");
             sm.setFgJobPID(-1);
