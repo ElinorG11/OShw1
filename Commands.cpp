@@ -107,19 +107,16 @@ bool sortJobEntries(JobsList::JobEntry *job1, JobsList::JobEntry *job2){
     return job1->getJobId() < job2->getJobId();
 }
 
-void JobsList::addJob(Command *cmd, bool isStopped, int pid, int job_id) {
+void JobsList::addJob(Command *cmd, bool isStopped, int pid) {
     int jobId;
     bool is_background;
 
-    if(job_entry_list->empty()) jobId = 1;
-
-    // in case the job is added for the first time
-    else if(job_id == -1) {
-        JobsList::getLastJob(&jobId);
-        jobId += 1;
-    } else { // job is continued
-        jobId = job_id;
-    }
+    if(job_entry_list->empty()) { 
+		jobId = 1;
+	} else {
+		JobsList::getLastJob(&jobId);
+		jobId += 1;
+	}
 
     is_background = _isBackgroundComamnd(cmd->getCmdLine().c_str());
     JobEntry *job_entry = new JobsList::JobEntry(cmd->getCmdLine(), jobId, pid, isStopped, is_background);
@@ -386,6 +383,8 @@ void ExternalCommand::execute() {
 
         } else { // is foreground
             sm.setFgJobPID(p);
+            
+            sm.setCmdLineSM(this->getCmdLine().c_str());
 
             waitpid(p,NULL,0 | WUNTRACED);
 
@@ -1009,7 +1008,6 @@ void RedirectionCommand::execute() {
     if(this->operation == ">"){
 //      open output file in overwrite
         int fd = open(this->output_file.c_str(),O_RDWR|O_CREAT,  S_IRWXO|S_IRWXU|S_IRWXG);
-        cout <<  'fd is: '  << std::to_string(channel) << endl;
         if(fd == -1){
             perror("smash error: open failed");
             sm.setFgJobPID(-1);

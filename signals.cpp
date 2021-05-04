@@ -14,6 +14,22 @@ void ctrlZHandler(int sig_num) {
 
     if (smash.getFgJobPID() != -1) {
         int fgJobId = smash.getFgJobID();
+        
+        // External FG job which is stopped for the first time
+        if(fgJobId == -1){
+			// add new job
+			Command *cmd = smash.CreateCommand(smash.getCmdLineSM()); 
+			smash.getJobList()->addJob(cmd, true, smash.getFgJobPID());
+			delete cmd;
+			
+			// send signal
+			if(kill(smash.getFgJobPID(), SIGSTOP) == -1){
+                perror("smash error: kill failed");
+                return;
+            }
+            
+            cout << "smash: process " << smash.getFgJobPID() << " was stopped" << endl << flush;
+		}
         JobsList::JobEntry *jobEntry = smash.getJobList()->getJobById(fgJobId);
         if(jobEntry != nullptr){
             int pid = jobEntry->getJobPid();

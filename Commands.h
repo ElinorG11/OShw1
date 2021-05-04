@@ -212,7 +212,7 @@ class JobsList {
  public:
   JobsList();
   ~JobsList();
-  void addJob(Command* cmd, bool isStopped = false, int pid = -1, int job_id = -1);
+  void addJob(Command* cmd, bool isStopped = false, int pid = -1);
   void printJobsList();
   void killAllJobs();
   void removeFinishedJobs();
@@ -314,8 +314,10 @@ class SmallShell {
   std::string prompt_name = "smash";
   int smashPID;
   int fg_job_pid = -1;
-    int fg_job_id = -1;
+  int fg_job_id = -1;
   std::string plastPwd;
+  const char* cmd_line;
+  
   SmallShell();
  public:
   Command *CreateCommand(const char* cmd_line);
@@ -373,6 +375,14 @@ class SmallShell {
 
   void setLastDir(std::string new_path){
       this->plastPwd = new_path;
+  }
+  
+  const char* getCmdLineSM(){
+      return this->cmd_line;
+  }
+
+  void setCmdLineSM(const char* new_line){
+      this->cmd_line = new_line;
   }
 };
 
