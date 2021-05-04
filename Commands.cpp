@@ -484,98 +484,127 @@ bool checkNumber(string str) {
 }
 
 void KillCommand::execute() {
-	if(this->getNumArgs() == 3 && this->getArgs()[2][0] == '-'){
+	/* corner case: 
+	 * invalid num of arguments
+	 * no '-' before signal
+	 * signal is not a number i.e. kill -<char> job_id
+	 * */
+	if((this->getNumArgs() != 3) || (this->getArgs()[1][0] != '-')){
+		cerr << "smash error: kill: invalid arguments" << endl;
+        return;
+	}
+	
+	
+	/* corner case:
+	 * negative job-id e.g. kill -9 -10
+	 * */
+	if((strlen(this->getArgs()[2]) > 1) && (this->getArgs()[2][0] == '-') && (checkNumber(string(this->getArgs()[2] + 1)))){
+        if(!checkNumber(string(this->getArgs()[1] + 1))) {
+			cerr << "smash error: kill: invalid arguments" << endl;
+			return;
+		}
         cerr << "smash error: kill: job-id " << this->getArgs()[2] << " does not exist" << endl;
         return;
     }
     
-    if(this->getNumArgs() == 3 && !checkNumber(string(this->getArgs()[2]))){
+    /* corner case:
+	 * job-id is not a number e.g. kill -9 abd
+	 * */
+    if(!checkNumber(string(this->getArgs()[2]))){
         cerr << "smash error: kill: invalid arguments" << endl;
         return;
     }
+    
+    /* corner case:
+     * signal is not a number e.g. kill - 5 or kill -- 1
+     * */
+     if(strlen(this->getArgs()[1]) < 2 || 
+		(strlen(this->getArgs()[1]) == 2 && !isdigit(*(this->getArgs()[1] + 1)))) {
+			cerr << "smash error: kill: invalid arguments" << endl;
+			return;
+	  }
+    
+    if(((strlen(this->getArgs()[1]) > 1) && (this->getArgs()[1][1] == '-') &&
+		(checkNumber(string(this->getArgs()[1] + 2)))) || (checkNumber(string(this->getArgs()[1] + 1)))) {
+	
+		int job_id = atoi(this->getArgs()[2]);
+		int signal_number = atoi(this->getArgs()[1] + 1);
 
-    if(this->getNumArgs() == 3 &&  this->getArgs()[1][0] == '-' && checkNumber(string(this->getArgs()[1] + 1))) {
-        int job_id = atoi(this->getArgs()[2]);
-        int signal_number = atoi(this->getArgs()[1] + 1);
+		SmallShell &sm = SmallShell::getInstance();
 
-        SmallShell &sm = SmallShell::getInstance();
+		JobsList *job_list = sm.getJobList();
 
-        JobsList *job_list = sm.getJobList();
+		JobsList::JobEntry *job = job_list->getJobById(job_id);
 
-        JobsList::JobEntry *job = job_list->getJobById(job_id);
+		if (job == nullptr) {
+			cerr << "smash error: kill: job-id " << job_id << " does not exist" << endl;
+			return;
+		}
 
-        if (job == nullptr) {
-            cerr << "smash error: kill: job-id " << job_id << " does not exist" << endl;
-            return;
-        }
+		string pid;
+		pid += std::to_string(job->getJobPid());
+	   
+		if (kill(job->getJobPid(), signal_number) < 0) {
+			perror("smash error: kill failed");
+			return;
+		} else {
+			cout << "signal number " << signal_number << " was sent to pid " << pid << endl;
+		}
 
-        string pid;
-        pid += std::to_string(job->getJobPid());
-       
-        if (kill(job->getJobPid(), signal_number) < 0) {
-            perror("smash error: kill failed");
-            return;
-        } else {
-            cout << "signal number " << signal_number << " was sent to pid " << pid << endl;
-        }
-
-        switch (signal_number) {
-            case SIGSTOP:
-                job->setStopped(true);
-                break;
-            case SIGCONT:
-                job->setStopped(false);
-                break;
-            case SIGKILL:
-                job_list->removeJobByPID(job->getJobPid());
-                break;
-            case SIGALRM:
-                job_list->removeJobByPID(job->getJobPid());
-                break;
-            //case SIGEMT:
-            //    job_list->removeJobByPID(job->getJobPid());
-             //   break;
-            case SIGHUP:
-                job_list->removeJobByPID(job->getJobPid());
-                break;
-            case SIGIO:
-                job_list->removeJobByPID(job->getJobPid());
-                break;
-            //case SIGLOST: // declared unused by manpage
-                //job_list->removeJobByPID(job->getJobPid());
-                //break;
-            case SIGPIPE:
-                job_list->removeJobByPID(job->getJobPid());
-                break;
-            case SIGPROF:
-                job_list->removeJobByPID(job->getJobPid());
-                break;
-            case SIGPWR:
-                job_list->removeJobByPID(job->getJobPid());
-                break;
-            case SIGSTKFLT:
-                job_list->removeJobByPID(job->getJobPid());
-                break;
-            case SIGTERM:
-                job_list->removeJobByPID(job->getJobPid());
-                break;
-            case SIGVTALRM:
-                job_list->removeJobByPID(job->getJobPid());
-                break;
-            case SIGTTIN:
-                job->setStopped(true);
-                break;
-            case SIGTTOU:
-                job->setStopped(true);
-                break;
-        }
-    } else if(this->getNumArgs() != 3 ||  this->getArgs()[1][0] != '-' || !checkNumber(string(this->getArgs()[1] + 1))) {
-        cerr << "smash error: kill: invalid arguments" << endl;
-        return;
-    } else {
+		switch (signal_number) {
+			case SIGSTOP:
+				job->setStopped(true);
+				break;
+			case SIGCONT:
+				job->setStopped(false);
+				break;
+			case SIGKILL:
+				job_list->removeJobByPID(job->getJobPid());
+				break;
+			case SIGALRM:
+				job_list->removeJobByPID(job->getJobPid());
+				break;
+			//case SIGEMT:
+			//    job_list->removeJobByPID(job->getJobPid());
+			 //   break;
+			case SIGHUP:
+				job_list->removeJobByPID(job->getJobPid());
+				break;
+			case SIGIO:
+				job_list->removeJobByPID(job->getJobPid());
+				break;
+			//case SIGLOST: // declared unused by manpage
+				//job_list->removeJobByPID(job->getJobPid());
+				//break;
+			case SIGPIPE:
+				job_list->removeJobByPID(job->getJobPid());
+				break;
+			case SIGPROF:
+				job_list->removeJobByPID(job->getJobPid());
+				break;
+			case SIGPWR:
+				job_list->removeJobByPID(job->getJobPid());
+				break;
+			case SIGSTKFLT:
+				job_list->removeJobByPID(job->getJobPid());
+				break;
+			case SIGTERM:
+				job_list->removeJobByPID(job->getJobPid());
+				break;
+			case SIGVTALRM:
+				job_list->removeJobByPID(job->getJobPid());
+				break;
+			case SIGTTIN:
+				job->setStopped(true);
+				break;
+			case SIGTTOU:
+				job->setStopped(true);
+				break;
+		}
+	} else {
 		cerr << "smash error: kill: invalid arguments" << endl;
         return;
-    }
+	}
 }
 
 ForegroundCommand::ForegroundCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {}
